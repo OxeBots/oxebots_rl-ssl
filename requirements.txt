@@ -1,0 +1,17 @@
+# ==============================================================================
+# Dependências do rSoccer Gym e Treinamento com Aprendizado por Reforço (RL)
+# Recomendado: Python 3.10
+# ==============================================================================
+
+# Simulador Físico C++ e Ambientes Gymnasium
+rc-robosim>=1.2.0
+gymnasium>=1.0.0
+pygame>=2.6.0
+
+# Framework de Reinforcement Learning e Deep Learning
+stable-baselines3>=2.3.0
+torch>=2.0.0
+tensorboard>=2.15.0
+
+# Utilitários
+numpy>=1.21.0
