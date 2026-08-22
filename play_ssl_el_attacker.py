@@ -15,16 +15,14 @@ CHECKPOINTS_DIR = "./modelos/checkpoints_ssl_el_attacker/"
 FINAL_MODEL_PATH = "modelos/ssl_el_attacker_ppo_final.zip"
 
 def get_latest_checkpoint():
-    """Busca o checkpoint mais recente gerado pelo treinamento ou o modelo final."""
-    # 1. Se o modelo final já existe, ele é o mais atual
+    """Busca o checkpoint ou modelo mais recente gerado pelo treinamento."""
+    candidates = glob.glob(os.path.join(CHECKPOINTS_DIR, "*.zip"))
     if os.path.exists(FINAL_MODEL_PATH):
-        return FINAL_MODEL_PATH.replace(".zip", "")
+        candidates.append(FINAL_MODEL_PATH)
 
-    # 2. Busca entre os checkpoints salvos
-    checkpoints = glob.glob(os.path.join(CHECKPOINTS_DIR, "*.zip"))
-    if checkpoints:
-        checkpoints.sort(key=os.path.getmtime, reverse=True)
-        return checkpoints[0].replace(".zip", "")
+    if candidates:
+        candidates.sort(key=os.path.getmtime, reverse=True)
+        return candidates[0].replace(".zip", "")
     
     return None
 
