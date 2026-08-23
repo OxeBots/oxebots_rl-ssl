@@ -31,26 +31,34 @@ Este documento explica a estrutura, regras, função de recompensa e como treina
 3. **Regra de Invasão de Área**:
    * 🛑 **O atacante NÃO PODE entrar na área adversária nem na própria área**. Se entrar, recebe penalidade severa ($-5.0$) e o episódio é encerrado imediatamente.
    * O atacante é forçado a chutar **de fora da área**!
+3. **Velocidades e Atuadores**:
+   * Velocidade linear máxima do robô (`max_v`): **1.5 m/s**
+   * Velocidade máxima do chute frontal (`kick_speed_x`): **3.0 m/s**
+   * Velocidade angular máxima (`max_w`): **5.0 rad/s**
+
 4. **Driblador (Dribbler)**:
    * **DESABILITADO** (`dribbler = False`). O robô deve usar sua cinemática omnidirecional para se alinhar atrás da bola e disparar o chutador frontal (`kick_v_x`).
 
 ---
 
-## 3. Estrutura da Função de Recompensa
+## 3. Estrutura da Função de Recompensa (Kick-Centric Differential Shaping)
 
 A função de recompensa está localizada no método `_calculate_reward_and_done(self)` em [`rsoccer_gym/ssl/ssl_el_attacker.py`](file:///home/matheus/rSoccer/rsoccer_gym/ssl/ssl_el_attacker.py):
 
 | Componente | Tipo | Valor | Motivação |
 | :--- | :---: | :---: | :--- |
-| **Gol Marcado** | Terminal | **$+15.0$** | Recompensa máxima por acertar o gol adversário de fora da área. |
+| **Gol Marcado** | Terminal | **$+40.0$ a $+50.0$** | Super recompensa por acertar o gol adversário (bônus para gol de chute potente). |
 | **Invasão de Área** | Terminal | **$-5.0$** | Penalidade por invadir a área de 1.35m x 0.50m (falta grave). |
-| **Gol Sofrido / Contra** | Terminal | **$-10.0$** | Penalidade caso a bola entre no próprio gol. |
-| **Bola Fora** | Terminal | **$-1.0$** | Penalidade por chutar para fora do campo (linha lateral/fundo). |
-| **Gradiente de Potencial** | Contínuo | Variável ($>0$) | Recompensa contínua por aproximar a bola da meta adversária. |
-| **Alinhamento e Posição** | Contínuo | até $+0.1$ | Incentiva o robô a ficar 20cm **atrás da bola** na linha reta do gol. |
-| **Sensor Infravermelho** | Contínuo | $+0.15$ | Bônus quando a bola encosta no bico do chutador. |
-| **Repulsão da Área** | Contínuo | $< 0$ | Penalidade suave que atua a 25cm da linha da área para ensinar o robô a desacelerar e não invadir. |
-| **Energia / Motores** | Contínuo | $-10^{-4} \times \|v\|$ | Evita vibrações, giros infinitos e gasto excessivo de motor. |
+| **Gol Sofrido / Contra** | Terminal | **$-15.0$** | Penalidade caso a bola entre no próprio gol. |
+| **Bola Fora** | Terminal | **$-2.0$** | Penalidade por chutar para fora do campo. |
+| **Aproximação e Contorno** | $\Delta \Phi$ Diferencial | até $\pm 1.0$ | Potencial dinâmico: alvo a 9.5cm atrás da bola (contato) ou contorno lateral se ultrapassar a bola. |
+| **Avanço da Bola ao Gol** | $\Delta \Phi$ Diferencial | até $\pm 2.0$ | Recompensa proporcional ao deslocamento da bola na direção da meta. |
+| **Alinhamento com o Gol** | $\Delta \Phi$ Diferencial | até $\pm 0.5$ | Recompensa diferencial de orientação angular apontando para o gol. |
+| **Disparo do Chute** | Contínuo/Impacto | $+2.0$ a $+4.0$ | Recompensa imediata ao acionar o chutador frontal posicionado na bola. |
+| **Tiro em Alta Velocidade no Alvo** | Evento | $+6.0$ | Bônus para qualquer disparo veloz na direção do gol. |
+| **Sensor Infravermelho** | Contínuo | $+0.05$ | Bônus quando a bola está perfeitamente alojada na cavidade do chutador. |
+| **Repulsão da Área Adversária** | Contínuo | $< 0$ | Barreira repulsiva a 20cm da área para ensinar o robô a chutar de longe e desacelerar. |
+| **Tempo e Energia** | Contínuo | $-0.005$ / step | Penalidade suave que força o robô a resolver a jogada rapidamente. |
 
 ---
 

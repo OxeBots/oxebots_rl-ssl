@@ -1,11 +1,73 @@
+from collections import deque
 import glob
 import os
 import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList, CheckpointCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
+
+
+class SSLMetricsCallback(BaseCallback):
+    """
+    Callback personalizado para registrar métricas detalhadas de desempenho e
+    recompensas decompostas no TensorBoard a cada rollout.
+    """
+    def __init__(self, stats_window_size: int = 100, verbose: int = 0):
+        super().__init__(verbose)
+        self.stats_window_size = stats_window_size
+        self.goals = deque(maxlen=stats_window_size)
+        self.own_goals = deque(maxlen=stats_window_size)
+        self.shots = deque(maxlen=stats_window_size)
+        self.area_violations = deque(maxlen=stats_window_size)
+        self.out_of_bounds = deque(maxlen=stats_window_size)
+
+        # Decomposição de recompensas
+        self.move_to_ball = deque(maxlen=stats_window_size)
+        self.ball_grad = deque(maxlen=stats_window_size)
+        self.push_to_goal = deque(maxlen=stats_window_size)
+        self.alignment = deque(maxlen=stats_window_size)
+        self.kick_action = deque(maxlen=stats_window_size)
+        self.infrared = deque(maxlen=stats_window_size)
+        self.energy = deque(maxlen=stats_window_size)
+
+    def _on_step(self) -> bool:
+        infos = self.locals.get("infos", [])
+        dones = self.locals.get("dones", [])
+        for idx, info in enumerate(infos):
+            if dones[idx]:
+                self.goals.append(1.0 if info.get("goal", 0) > 0 else 0.0)
+                self.own_goals.append(1.0 if info.get("goal", 0) < 0 else 0.0)
+                self.shots.append(1.0 if info.get("shot_on_goal", 0) > 0 else 0.0)
+                self.area_violations.append(1.0 if info.get("area_violation", 0) < 0 else 0.0)
+                self.out_of_bounds.append(1.0 if info.get("out_of_bounds", 0) < 0 else 0.0)
+
+                self.move_to_ball.append(info.get("move_to_ball", 0.0))
+                self.ball_grad.append(info.get("ball_grad", 0.0))
+                self.push_to_goal.append(info.get("push_to_goal", 0.0))
+                self.alignment.append(info.get("alignment", 0.0))
+                self.kick_action.append(info.get("kick_action", 0.0))
+                self.infrared.append(info.get("infrared", 0.0))
+                self.energy.append(info.get("energy", 0.0))
+        return True
+
+    def _on_rollout_end(self) -> None:
+        if len(self.goals) > 0:
+            self.logger.record("metrics/goal_rate", float(np.mean(self.goals)))
+            self.logger.record("metrics/own_goal_rate", float(np.mean(self.own_goals)))
+            self.logger.record("metrics/shot_on_goal_rate", float(np.mean(self.shots)))
+            self.logger.record("metrics/area_violation_rate", float(np.mean(self.area_violations)))
+            self.logger.record("metrics/out_of_bounds_rate", float(np.mean(self.out_of_bounds)))
+
+            self.logger.record("rewards/move_to_ball_mean", float(np.mean(self.move_to_ball)))
+            self.logger.record("rewards/ball_grad_mean", float(np.mean(self.ball_grad)))
+            self.logger.record("rewards/push_to_goal_mean", float(np.mean(self.push_to_goal)))
+            self.logger.record("rewards/alignment_mean", float(np.mean(self.alignment)))
+            self.logger.record("rewards/kick_action_mean", float(np.mean(self.kick_action)))
+            self.logger.record("rewards/infrared_mean", float(np.mean(self.infrared)))
+            self.logger.record("rewards/energy_penalty_mean", float(np.mean(self.energy)))
 
 
 class OnnxablePolicy(nn.Module):
@@ -87,16 +149,19 @@ def main():
             except OSError:
                 pass
 
-    # 2. Criação dos ambientes vetorizados em paralelo
+    # 2. Criação dos ambientes vetorizados em paralelo (com VecMonitor para logging automático no TensorBoard)
     print(f"\nIniciando {num_envs} processos de simulação em paralelo...")
-    env = SubprocVecEnv([make_env(i) for i in range(num_envs)])
+    vec_env = SubprocVecEnv([make_env(i) for i in range(num_envs)])
+    env = VecMonitor(vec_env)
 
-    # 3. Salvamento periódico de checkpoints (a cada 50.000 passos totais para monitoramento rápido)
+    # 3. Callbacks periódicos: Checkpoint + Métricas Detalhadas no TensorBoard
     checkpoint_callback = CheckpointCallback(
         save_freq=max(1000, 50_000 // num_envs),
         save_path=checkpoint_dir,
         name_prefix="ppo_ssl_el_attacker"
     )
+    metrics_callback = SSLMetricsCallback()
+    callbacks = CallbackList([checkpoint_callback, metrics_callback])
 
     # 4. Carrega modelo prévio para continuar melhorando ou inicia um novo
     if os.path.exists(final_model_zip):
@@ -112,7 +177,7 @@ def main():
             gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.005,
+            ent_coef=0.01,
             verbose=1,
             tensorboard_log="./tensorboard_ssl_el_attacker/"
         )
@@ -128,12 +193,12 @@ def main():
             gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.005,
+            ent_coef=0.01,
             verbose=1,
             tensorboard_log="./tensorboard_ssl_el_attacker/"
         )
 
-    total_timesteps = 5_000_000
+    total_timesteps = 15_000_000
     print(f"\nIniciando treinamento por +{total_timesteps:,} passos...")
     print("Para monitorar o treino em tempo real no navegador:")
     print("  tensorboard --logdir ./tensorboard_ssl_el_attacker/\n")
@@ -141,7 +206,7 @@ def main():
     try:
         model.learn(
             total_timesteps=total_timesteps,
-            callback=checkpoint_callback,
+            callback=callbacks,
             progress_bar=True,
             reset_num_timesteps=False
         )

@@ -229,11 +229,13 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
     def _calculate_reward_and_done(self) -> Tuple[float, bool]:
         """
-        FUNÇÃO DE RECOMPENSA (POTENTIAL-BASED REWARD SHAPING):
-        - Sem living rewards positivos fixos por estar parado.
-        - Diferença de potencial na aproximação da bola e no avanço da bola até o gol.
-        - Bônus por contato frontal, condução e chute no alvo.
-        - Recompensa terminal expressiva no gol (+20.0).
+        FUNÇÃO DE RECOMPENSA OTIMIZADA PARA POSICIONAMENTO E CHUTE AO GOL:
+        - 100% Baseada em Diferencial de Potencial (Zero recompensa por ficar parado).
+        - Posicionamento inteligente: alvo no ponto de impacto (0.095m atrás da bola) quando atrás dela,
+          ou contorno lateral se estiver à frente/bloqueando a linha de chute.
+        - Alinhamento angular diferencial com o gol.
+        - Bônus por acionamento do chutador na bola e aceleração da bola em direção ao gol.
+        - Recompensa por tiro em alta velocidade no alvo e super recompensa por gol.
         """
         reward = 0.0
         done = False
@@ -247,7 +249,9 @@ class SSLELAttackerEnv(SSLBaseEnv):
                 "out_of_bounds": 0.0,
                 "ball_grad": 0.0,
                 "move_to_ball": 0.0,
+                "push_to_goal": 0.0,
                 "alignment": 0.0,
+                "kick_action": 0.0,
                 "infrared": 0.0,
                 "energy": 0.0,
             }
@@ -261,21 +265,18 @@ class SSLELAttackerEnv(SSLBaseEnv):
         # ----------------------------------------------------
         # 1. Término com Penalidade por Violação de Regras
         # ----------------------------------------------------
-        # Robô saiu dos limites do campo
         if abs(robot.x) > (half_len + 0.05) or abs(robot.y) > (half_wid + 0.05):
             reward = -5.0
             done = True
             self.reward_shaping_total["out_of_bounds"] -= 5.0
             return reward, done
 
-        # Invasão da área adversária (amarela)
         if self._is_inside_penalty_area(robot.x, robot.y, is_yellow_area=True):
             reward = -5.0
             done = True
             self.reward_shaping_total["area_violation"] -= 5.0
             return reward, done
 
-        # Invasão da própria área (azul)
         if self._is_inside_penalty_area(robot.x, robot.y, is_yellow_area=False):
             reward = -5.0
             done = True
@@ -285,118 +286,188 @@ class SSLELAttackerEnv(SSLBaseEnv):
         # ----------------------------------------------------
         # 2. Eventos Terminais de Jogo
         # ----------------------------------------------------
-        # Gol Válido no Adversário (+20.0)
+        # Gol Válido no Adversário (+40.0 a +50.0)
         if ball.x > half_len and abs(ball.y) < goal_w:
-            reward = 20.0
+            goal_rw = 40.0
+            if self.shot_opp_active or ball.v_x > 0.8:
+                goal_rw += 10.0  # Bônus extra por gol de chute potente
+            reward = goal_rw
             done = True
-            self.reward_shaping_total["goal"] += 20.0
+            self.reward_shaping_total["goal"] += goal_rw
             return reward, done
 
-        # Gol Sofrido / Gol Contra (-10.0)
+        # Gol Sofrido / Gol Contra (-15.0)
         if ball.x < -half_len and abs(ball.y) < goal_w:
-            reward = -10.0
+            reward = -15.0
             done = True
-            self.reward_shaping_total["goal"] -= 10.0
+            self.reward_shaping_total["goal"] -= 15.0
             return reward, done
 
-        # Bola fora dos limites do campo (-1.0)
+        # Bola fora dos limites do campo (-2.0)
         if abs(ball.x) > (half_len + 0.1) or abs(ball.y) > (half_wid + 0.1):
-            reward = -1.0
+            reward = -2.0
             done = True
             return reward, done
 
         # ----------------------------------------------------
-        # 3. Chute ao Gol / Detecção de Tiro
+        # 3. Cálculos Geométricos e Cinemáticos
         # ----------------------------------------------------
-        dist_robot_ball = math.hypot(robot.x - ball.x, robot.y - ball.y)
-        is_near_ball = (dist_robot_ball < 0.25) or robot.infrared
+        goal_target = np.array([half_len, 0.0])
+        ball_pos = np.array([ball.x, ball.y])
+        robot_pos = np.array([robot.x, robot.y])
 
-        # Chute em direção ao gol adversário
-        if ball.v_x > 0.8:
-            t_opp = (half_len - ball.x) / ball.v_x
+        vec_b2g = goal_target - ball_pos
+        dist_b2g = float(np.linalg.norm(vec_b2g))
+        dir_b2g = vec_b2g / max(dist_b2g, 1e-6)
+        perp_dir = np.array([-dir_b2g[1], dir_b2g[0]])
+
+        vec_r2b = ball_pos - robot_pos
+        dist_r2b = float(np.linalg.norm(vec_r2b))
+        proj_behind = float(np.dot(vec_r2b, dir_b2g))
+
+        # Ponto alvo do robô:
+        # Se atrás da bola: ponto exato de contato frontal (0.095m da bola)
+        # Se na frente da bola: contorno lateral para vir por trás
+        if proj_behind > 0.05:
+            target_pos = ball_pos - 0.095 * dir_b2g
+        else:
+            y_rel = float(np.dot(robot_pos - ball_pos, perp_dir))
+            sign_y = 1.0 if y_rel >= 0 else -1.0
+            target_pos = ball_pos - 0.22 * dir_b2g + sign_y * 0.28 * perp_dir
+        cur_dist_target = float(np.linalg.norm(target_pos - robot_pos))
+
+        # Velocidade da bola em direção ao gol
+        ball_vel = np.array([ball.v_x, ball.v_y])
+        ball_v_to_goal = float(np.dot(ball_vel, dir_b2g))
+
+        # Ângulo alvo de orientação: apontando para o gol adversário através da bola
+        target_angle = math.atan2(vec_b2g[1], vec_b2g[0])
+        rbt_theta_rad = math.radians(robot.theta)
+        align_cos = math.cos(rbt_theta_rad - target_angle)
+
+        # ----------------------------------------------------
+        # 4. Incentivo ao Disparo do Chute Frontal
+        # ----------------------------------------------------
+        if self.sent_commands is not None and len(self.sent_commands) > 0:
+            if self.sent_commands[0].kick_v_x > 0:
+                if robot.infrared:
+                    kick_act_rw = 2.5
+                    if align_cos > 0.4:
+                        kick_act_rw += 1.5
+                    reward += kick_act_rw
+                    self.reward_shaping_total["kick_action"] += kick_act_rw
+                elif dist_r2b < 0.16 and proj_behind > 0.0 and align_cos > 0.5:
+                    kick_act_rw = 2.0
+                    reward += kick_act_rw
+                    self.reward_shaping_total["kick_action"] += kick_act_rw
+
+        # ----------------------------------------------------
+        # 5. Detecção de Chute em Alta Velocidade no Alvo
+        # ----------------------------------------------------
+        is_high_speed_shot = (ball.v_x > 1.0 and ball_v_to_goal > 0.8)
+        if is_high_speed_shot:
+            t_opp = (half_len - ball.x) / max(ball.v_x, 1e-6)
             if t_opp > 0:
                 y_proj_opp = ball.y + (ball.v_y * t_opp)
-                if abs(y_proj_opp) <= (goal_w + 0.06):
-                    if is_near_ball and not self.shot_opp_active:
+                if abs(y_proj_opp) <= (goal_w + 0.10):
+                    if not self.shot_opp_active:
                         self.shot_opp_active = True
-                        shot_bonus = 3.0
+                        shot_bonus = 6.0
                         reward += shot_bonus
                         self.reward_shaping_total["shot_on_goal"] += shot_bonus
         elif ball.v_x < 0.3:
             self.shot_opp_active = False
 
         # Chute em direção à própria meta (penalidade)
-        if ball.v_x < -0.8:
-            t_own = (-half_len - ball.x) / ball.v_x
+        if ball.v_x < -1.0:
+            t_own = (-half_len - ball.x) / min(ball.v_x, -1e-6)
             if t_own > 0:
                 y_proj_own = ball.y + (ball.v_y * t_own)
                 if abs(y_proj_own) <= (goal_w + 0.15):
-                    if is_near_ball and not self.shot_own_active:
+                    if (dist_r2b < 0.25) and not self.shot_own_active:
                         self.shot_own_active = True
-                        own_shot_penalty = -3.0
+                        own_shot_penalty = -4.0
                         reward += own_shot_penalty
                         self.reward_shaping_total["shot_own_goal"] += own_shot_penalty
-        elif ball.v_x > -0.3:
+        elif ball.v_x > -0.4:
             self.shot_own_active = False
 
         # ----------------------------------------------------
-        # 4. Recompensas Contínuas com Potential Difference
+        # 6. Recompensas Diferenciais de Potencial (Zero por ficar parado)
         # ----------------------------------------------------
-        goal_target = np.array([half_len, 0.0])
-        ball_pos = np.array([ball.x, ball.y])
-        robot_pos = np.array([robot.x, robot.y])
-
-        # Distâncias atuais
-        cur_dist_robot_ball = float(np.linalg.norm(ball_pos - robot_pos))
-        cur_dist_ball_goal = float(np.linalg.norm(goal_target - ball_pos))
-
         if self.last_frame is not None:
             last_ball = self.last_frame.ball
             last_robot = self.last_frame.robots_blue[0]
             last_ball_pos = np.array([last_ball.x, last_ball.y])
             last_robot_pos = np.array([last_robot.x, last_robot.y])
 
-            last_dist_robot_ball = float(np.linalg.norm(last_ball_pos - last_robot_pos))
-            last_dist_ball_goal = float(np.linalg.norm(goal_target - last_ball_pos))
+            last_vec_b2g = goal_target - last_ball_pos
+            last_dist_b2g = float(np.linalg.norm(last_vec_b2g))
+            last_dir_b2g = last_vec_b2g / max(last_dist_b2g, 1e-6)
+            last_perp_dir = np.array([-last_dir_b2g[1], last_dir_b2g[0]])
 
-            # A) Diferença de potencial para aproximação até a bola
-            diff_move = (last_dist_robot_ball - cur_dist_robot_ball) * 2.0
+            last_vec_r2b = last_ball_pos - last_robot_pos
+            last_proj_behind = float(np.dot(last_vec_r2b, last_dir_b2g))
+            if last_proj_behind > 0.05:
+                last_target_pos = last_ball_pos - 0.095 * last_dir_b2g
+            else:
+                last_y_rel = float(np.dot(last_robot_pos - last_ball_pos, last_perp_dir))
+                last_sign_y = 1.0 if last_y_rel >= 0 else -1.0
+                last_target_pos = last_ball_pos - 0.22 * last_dir_b2g + last_sign_y * 0.28 * last_perp_dir
+            last_dist_target = float(np.linalg.norm(last_target_pos - last_robot_pos))
+
+            # A) Aproximação da posição ideal (atrás da bola ou ponto de contorno)
+            diff_move = (last_dist_target - cur_dist_target) * 2.5
             r_move = float(np.clip(diff_move, -1.0, 1.0))
+            # Se a bola foi disparada em direção ao gol, não penaliza o afastamento do robô
+            if is_high_speed_shot or ball_v_to_goal > 1.0:
+                r_move = max(0.0, r_move)
             reward += r_move
             self.reward_shaping_total["move_to_ball"] += r_move
 
-            # B) Diferença de potencial do avanço da bola até o gol
-            diff_ball_goal = (last_dist_ball_goal - cur_dist_ball_goal) * 4.0
+            # B) Avanço da bola até o gol
+            diff_ball_goal = (last_dist_b2g - dist_b2g) * 4.0
             r_ball_grad = float(np.clip(diff_ball_goal, -2.0, 2.0))
             reward += r_ball_grad
             self.reward_shaping_total["ball_grad"] += r_ball_grad
 
-        # C) Alinhamento angular do robô de frente para a bola (quando próximo)
-        vec_to_ball = ball_pos - robot_pos
-        ang_to_ball = math.atan2(vec_to_ball[1], vec_to_ball[0])
-        rbt_theta_rad = math.radians(robot.theta)
-        ang_align = math.cos(rbt_theta_rad - ang_to_ball)
-        if cur_dist_robot_ball < 0.5:
-            align_rw = float(0.02 * max(0.0, ang_align))
-            reward += align_rw
-            self.reward_shaping_total["alignment"] += align_rw
+            # C) Alinhamento angular diferencial com o gol
+            last_target_angle = math.atan2(last_vec_b2g[1], last_vec_b2g[0])
+            last_align_cos = math.cos(math.radians(last_robot.theta) - last_target_angle)
+            diff_align = (align_cos - last_align_cos) * 0.5
+            r_align = float(np.clip(diff_align, -0.5, 0.5))
+            reward += r_align
+            self.reward_shaping_total["alignment"] += r_align
 
-        # D) Bônus por contato frontal e condução da bola
+            # D) Impulso de aceleração da bola em direção ao gol gerado pelo chute/contato
+            last_ball_vel = np.array([last_ball.v_x, last_ball.v_y])
+            last_ball_v_to_goal = float(np.dot(last_ball_vel, last_dir_b2g))
+            accel_ball_to_goal = ball_v_to_goal - last_ball_v_to_goal
+            if accel_ball_to_goal > 0.5 and (dist_r2b < 0.20 or robot.infrared):
+                impulse_rw = float(1.5 * min(accel_ball_to_goal, 3.0))
+                reward += impulse_rw
+                self.reward_shaping_total["push_to_goal"] += impulse_rw
+
+        # ----------------------------------------------------
+        # 7. Contato e Condução com Infravermelho
+        # ----------------------------------------------------
         if robot.infrared:
             infra_rw = 0.05
-            if ball.v_x > 0.3:
-                infra_rw += float(0.05 * min(ball.v_x, 3.0))
             reward += infra_rw
             self.reward_shaping_total["infrared"] += infra_rw
 
-        # E) Barreira Repulsiva para a área do goleiro adversário
+        # ----------------------------------------------------
+        # 8. Barreira Repulsiva para a Área do Goleiro Adversário
+        # ----------------------------------------------------
         penalty_line_x = half_len - self.field.penalty_length  # 1.75m
-        if robot.x > (penalty_line_x - 0.25) and abs(robot.y) < (self.field.penalty_width / 2 + 0.1):
-            dist_near = robot.x - (penalty_line_x - 0.25)
-            reward -= 0.15 * dist_near
+        if robot.x > (penalty_line_x - 0.20) and abs(robot.y) < (self.field.penalty_width / 2 + 0.10):
+            dist_near = robot.x - (penalty_line_x - 0.20)
+            reward -= 0.20 * dist_near
 
-        # F) Penalidade suave de tempo (-0.001 por step para incentivar rapidez) e energia
-        time_rw = -0.001
+        # ----------------------------------------------------
+        # 9. Penalidade de Tempo e Energia
+        # ----------------------------------------------------
+        time_rw = -0.005
         energy_rw = float(1e-4 * (abs(robot.v_x) + abs(robot.v_y) + abs(robot.v_theta)))
         reward += time_rw - energy_rw
         self.reward_shaping_total["energy"] -= (abs(time_rw) + energy_rw)
