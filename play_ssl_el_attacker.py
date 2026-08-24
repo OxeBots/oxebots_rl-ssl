@@ -75,9 +75,15 @@ def main():
                     elif info.get("out_of_bounds", 0) < 0:
                         print(f"🚫 Episódio {episodes}: Robô saiu dos limites do campo!")
                     elif info.get("shot_on_goal", 0) > 0:
-                        print(f"🎯 Episódio {episodes}: Chute ao gol no alvo defendido!")
+                        print(f"🎯 Episódio {episodes}: Chute no alvo defendido pelo goleiro!")
+                    elif info.get("shot_attempt", 0) > 0:
+                        print(f"⚡ Episódio {episodes}: Tentativa de finalização / Chute ao gol!")
                     elif info.get("shot_own_goal", 0) < 0:
                         print(f"⚠️ Episódio {episodes}: Chute contra a própria meta!")
+                    elif info.get("ball_out_offensive", 0) > 0:
+                        print(f"💨 Episódio {episodes}: Bola saiu pela linha de fundo ofensiva (Tiro de meta).")
+                    elif info.get("ball_out", 0) > 0:
+                        print(f"💨 Episódio {episodes}: Bola saiu lateral/campo.")
                     else:
                         print(f"⏱️  Episódio {episodes}: Finalizado.")
 

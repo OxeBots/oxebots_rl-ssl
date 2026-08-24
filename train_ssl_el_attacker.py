@@ -18,9 +18,13 @@ class SSLMetricsCallback(BaseCallback):
     def __init__(self, stats_window_size: int = 100, verbose: int = 0):
         super().__init__(verbose)
         self.stats_window_size = stats_window_size
+        self.episode_rewards = deque(maxlen=stats_window_size)
+        self.episode_lengths = deque(maxlen=stats_window_size)
         self.goals = deque(maxlen=stats_window_size)
         self.own_goals = deque(maxlen=stats_window_size)
         self.shots = deque(maxlen=stats_window_size)
+        self.shot_attempts = deque(maxlen=stats_window_size)
+        self.ball_out_offensive = deque(maxlen=stats_window_size)
         self.area_violations = deque(maxlen=stats_window_size)
         self.out_of_bounds = deque(maxlen=stats_window_size)
 
@@ -38,9 +42,16 @@ class SSLMetricsCallback(BaseCallback):
         dones = self.locals.get("dones", [])
         for idx, info in enumerate(infos):
             if dones[idx]:
+                # Recompensa total e tamanho do episódio (fornecidos pelo VecMonitor)
+                if "episode" in info:
+                    self.episode_rewards.append(info["episode"]["r"])
+                    self.episode_lengths.append(info["episode"]["l"])
+
                 self.goals.append(1.0 if info.get("goal", 0) > 0 else 0.0)
                 self.own_goals.append(1.0 if info.get("goal", 0) < 0 else 0.0)
                 self.shots.append(1.0 if info.get("shot_on_goal", 0) > 0 else 0.0)
+                self.shot_attempts.append(1.0 if (info.get("shot_attempt", 0) > 0 or info.get("shot_on_goal", 0) > 0) else 0.0)
+                self.ball_out_offensive.append(1.0 if info.get("ball_out_offensive", 0) > 0 else 0.0)
                 self.area_violations.append(1.0 if info.get("area_violation", 0) < 0 else 0.0)
                 self.out_of_bounds.append(1.0 if info.get("out_of_bounds", 0) < 0 else 0.0)
 
@@ -54,10 +65,16 @@ class SSLMetricsCallback(BaseCallback):
         return True
 
     def _on_rollout_end(self) -> None:
+        if len(self.episode_rewards) > 0:
+            self.logger.record("metrics/mean_episode_reward", float(np.mean(self.episode_rewards)))
+            self.logger.record("metrics/mean_episode_length", float(np.mean(self.episode_lengths)))
+
         if len(self.goals) > 0:
             self.logger.record("metrics/goal_rate", float(np.mean(self.goals)))
             self.logger.record("metrics/own_goal_rate", float(np.mean(self.own_goals)))
             self.logger.record("metrics/shot_on_goal_rate", float(np.mean(self.shots)))
+            self.logger.record("metrics/shot_attempt_rate", float(np.mean(self.shot_attempts)))
+            self.logger.record("metrics/ball_out_offensive_rate", float(np.mean(self.ball_out_offensive)))
             self.logger.record("metrics/area_violation_rate", float(np.mean(self.area_violations)))
             self.logger.record("metrics/out_of_bounds_rate", float(np.mean(self.out_of_bounds)))
 
@@ -198,7 +215,7 @@ def main():
             tensorboard_log="./tensorboard_ssl_el_attacker/"
         )
 
-    total_timesteps = 15_000_000
+    total_timesteps = 10_000_000
     print(f"\nIniciando treinamento por +{total_timesteps:,} passos...")
     print("Para monitorar o treino em tempo real no navegador:")
     print("  tensorboard --logdir ./tensorboard_ssl_el_attacker/\n")
