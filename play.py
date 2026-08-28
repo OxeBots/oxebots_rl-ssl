@@ -1,5 +1,5 @@
 """
-Script Universal de Visualização / Teste de Modelos Treinados
+Script  de Visualização / Teste de Modelos Treinados
 Permite rodar QUALQUER ambiente com QUALQUER modelo salvo via linha de comando.
 
 Exemplos de uso:
@@ -18,18 +18,18 @@ import rsoccer_gym
 from stable_baselines3 import PPO
 
 def find_latest_model(env_name="SSL-EL-v0"):
-    """Busca o modelo treinado mais recente disponível dentro da pasta modelos/."""
-    # 1. Procura todos os arquivos .zip dentro da pasta modelos/
+    """Busca o modelo treinado mais recente disponível dentro da pasta modelos"""
+    # procura todos os arquivos .zip dentro da pasta modelos/
     model_files = glob.glob("./modelos/**/*.zip", recursive=True) + glob.glob("./modelos/*.zip")
     
-    # 2. Fallback caso não haja arquivos em modelos/
+    # fallback caso não haja arquivos em modelos/
     if not model_files:
         model_files = glob.glob("./checkpoints*/*.zip") + glob.glob("./*.zip")
     
     if model_files:
-        # Remove duplicados
+        # remove duplicados
         model_files = list(dict.fromkeys(model_files))
-        # Ordena pelo horário da última modificação (mais recente primeiro)
+        # ordena pelo horário da última modificação (mais recente primeiro)
         model_files.sort(key=os.path.getmtime, reverse=True)
         return model_files[0].replace(".zip", "")
     
@@ -63,22 +63,22 @@ def main():
     )
     args = parser.parse_args()
 
-    print("=" * 65)
-    print(f"   VISUALIZADOR UNIVERSAL - Ambiente: {args.env}")
+    
+    print(f"   VISUALIZADOR  - Ambiente: {args.env}")
     print("   Pressione Ctrl + C no terminal para encerrar.")
-    print("=" * 65)
+    
 
-    # 1. Cria o ambiente com renderização gráfica 2D
+    # cria o ambiente com renderização gráfica 2D
     try:
         env = gym.make(args.env, render_mode="human")
     except Exception as e:
         print(f"Erro ao carregar o ambiente '{args.env}': {e}")
         return
 
-    # 2. Identifica e carrega o modelo
+    # identifica e carrega o modelo
     model_path = args.model if args.model else find_latest_model(args.env)
     
-    # Se o modelo foi passado por nome e reside dentro de modelos/
+    # se o modelo foi passado por nome e reside dentro de modelos/
     if model_path:
         if not os.path.exists(model_path) and not os.path.exists(f"{model_path}.zip"):
             if os.path.exists(os.path.join("modelos", f"{model_path}.zip")):
@@ -120,12 +120,12 @@ def main():
                 if info:
                     if info.get("goal", 0) > 0 or reward >= 10.0:
                         goals += 1
-                        print(f"⚽ Episódio {episodes}: GOL MARCADO! (Total gols: {goals})")
+                        print(f" episódio {episodes}: GOL MARCADO! (Total gols: {goals})")
                     elif info.get("area_violation", 0) < 0:
                         violations += 1
-                        print(f"🛑 Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
+                        print(f" episódio {episodes}: Invasão de área! (Total faltas: {violations})")
                     else:
-                        print(f"⏱️  Episódio {episodes}: Fim de episódio. (Recompensa final: {reward:.2f})")
+                        print(f" episódio {episodes}: Fim de episódio. (Recompensa final: {reward:.2f})")
                 
                 obs, info = env.reset()
                 time.sleep(0.3)

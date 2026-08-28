@@ -123,9 +123,9 @@ def export_to_onnx(model, save_path="modelos/ssl_el_attacker.onnx"):
         if os.path.exists(data_file):
             os.remove(data_file)
 
-        print(f"📦 Modelo ONNX exportado com sucesso em: {save_path}")
+        print(f"modelo ONNX exportado com sucesso em: {save_path}")
     except Exception as e:
-        print(f"⚠️ Aviso: Falha na exportação automática para ONNX: {e}")
+        print(f" falha na exportação automática para ONNX: {e}")
 
 
 def make_env(rank: int, seed: int = 42):
@@ -156,7 +156,7 @@ def main():
     print(f"   Campo: 4.5m x 3.0m | Área: 1.35m x 0.50m")
     print("=" * 65)
 
-    # 1. Limpeza APENAS dos checkpoints intermediários antigos (mantendo o modelo final)
+    # limpeza  dos checkpoints intermediários antigos 
     old_checkpoints = glob.glob(os.path.join(checkpoint_dir, "*.zip"))
     if old_checkpoints:
         print(f"Limpando {len(old_checkpoints)} checkpoints intermediários anteriores...")
@@ -166,12 +166,12 @@ def main():
             except OSError:
                 pass
 
-    # 2. Criação dos ambientes vetorizados em paralelo (com VecMonitor para logging automático no TensorBoard)
+    # criação dos ambientes vetorizados em paralelo (com VecMonitor para logging automático no TensorBoard)
     print(f"\nIniciando {num_envs} processos de simulação em paralelo...")
     vec_env = SubprocVecEnv([make_env(i) for i in range(num_envs)])
     env = VecMonitor(vec_env)
 
-    # 3. Callbacks periódicos: Checkpoint + Métricas Detalhadas no TensorBoard
+    # callbacks periódicos: Checkpoint + Métricas Detalhadas no TensorBoard
     checkpoint_callback = CheckpointCallback(
         save_freq=max(1000, 50_000 // num_envs),
         save_path=checkpoint_dir,
@@ -180,9 +180,9 @@ def main():
     metrics_callback = SSLMetricsCallback()
     callbacks = CallbackList([checkpoint_callback, metrics_callback])
 
-    # 4. Carrega modelo prévio para continuar melhorando ou inicia um novo
+    # carrega modelo prévio para continuar melhorando ou inicia um novo
     if os.path.exists(final_model_zip):
-        print(f"\n📂 Modelo existente encontrado: '{final_model_zip}'")
+        print(f"\n Modelo existente encontrado: '{final_model_zip}'")
         print("   Continuando o treinamento a partir dos pesos existentes para aprimorá-lo...")
         model = PPO.load(
             final_model_name,
@@ -199,7 +199,7 @@ def main():
             tensorboard_log="./tensorboard_ssl_el_attacker/"
         )
     else:
-        print("\n✨ Nenhum modelo final anterior encontrado. Criando novo modelo...")
+        print("\n nenhum modelo final anterior encontrado. Criando novo modelo...")
         model = PPO(
             "MlpPolicy",
             env,
@@ -231,20 +231,20 @@ def main():
         # Garante o fechamento correto dos subprocessos
         env.close()
 
-    # 5. Salva o modelo final (.zip para RL e .onnx para ROS)
+    # salva o modelo final (.zip e .onnx)
     model.save(final_model_name)
     print(f"\n Treinamento concluído com sucesso!")
     print(f" Modelo RL (.zip) salvo em: {final_model_zip}")
     export_to_onnx(model, final_onnx_path)
 
-    # 6. Limpeza APENAS dos checkpoints intermediários temporários
-    print("🧹 Limpando checkpoints intermediários...")
+    # limpeza APENAS dos checkpoints intermediários temporários
+    print("limpando checkpoints intermediários...")
     for f in glob.glob(os.path.join(checkpoint_dir, "*.zip")):
         try:
             os.remove(f)
         except OSError:
             pass
-    print("✅ Checkpoints intermediários limpos. Modelos principais (.zip e .onnx) preservados!")
+    print("checkpoints intermediários limpos. Modelos principais (.zip e .onnx) preservados!")
     print(f" Para assistir ao robô jogando, execute:")
     print(f"   python play_ssl_el_attacker.py\n")
 

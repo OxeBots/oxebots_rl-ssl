@@ -15,7 +15,7 @@ CHECKPOINTS_DIR = "./modelos/checkpoints_ssl_el_attacker/"
 FINAL_MODEL_PATH = "modelos/ssl_el_attacker_ppo_final.zip"
 
 def get_latest_checkpoint():
-    """Busca o checkpoint ou modelo mais recente gerado pelo treinamento."""
+    """Busca o checkpoint ou modelo mais recente gerado pelo treinamento"""
     candidates = glob.glob(os.path.join(CHECKPOINTS_DIR, "*.zip"))
     if os.path.exists(FINAL_MODEL_PATH):
         candidates.append(FINAL_MODEL_PATH)
@@ -27,11 +27,10 @@ def get_latest_checkpoint():
     return None
 
 def main():
-    print("=" * 65)
-    print("   MONITOR DE TREINAMENTO EM TEMPO REAL - SSL-EL (3v3)")
-    print("   Assista ao robô evoluindo enquanto o train_ssl_el_attacker roda!")
+    
+    print("   MONITOR DE TREINAMENTO EM TEMPO REAL - SSL-EL ")
     print("   Pressione Ctrl + C no terminal para encerrar.")
-    print("=" * 65)
+    
 
     # 1. Cria o ambiente com renderização gráfica 2D
     env = gym.make("SSL-EL-v0", render_mode="human")
@@ -45,10 +44,10 @@ def main():
         current_model_path = get_latest_checkpoint()
         if current_model_path:
             break
-        print("⏳ Aguardando primeiro checkpoint ser salvo pelo treinamento (a cada 200k passos)...")
+        print("Aguardando primeiro checkpoint ser salvo pelo treinamento (a cada 200k passos)...")
         time.sleep(5)
 
-    print(f"✅ Checkpoint inicial carregado: '{current_model_path}'\n")
+    print(f"Checkpoint inicial carregado: '{current_model_path}'\n")
     model = PPO.load(current_model_path)
 
     obs, info = env.reset()
@@ -71,7 +70,7 @@ def main():
                         print(f"🥅 Episódio {episodes}: GOL SOFRIDO / CONTRA!")
                     elif info.get("area_violation", 0) < 0:
                         violations += 1
-                        print(f"🛑 Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
+                        print(f"🛑 Episódio {episodes}: Invasão de área (Total faltas: {violations})")
                     elif info.get("out_of_bounds", 0) < 0:
                         print(f"🚫 Episódio {episodes}: Robô saiu dos limites do campo!")
                     elif info.get("shot_on_goal", 0) > 0:
@@ -81,7 +80,7 @@ def main():
                     elif info.get("shot_own_goal", 0) < 0:
                         print(f"⚠️ Episódio {episodes}: Chute contra a própria meta!")
                     elif info.get("ball_out_offensive", 0) > 0:
-                        print(f"💨 Episódio {episodes}: Bola saiu pela linha de fundo ofensiva (Tiro de meta).")
+                        print(f"💨 Episódio {episodes}: Bola saiu pela linha de fundo de fundo.")
                     elif info.get("ball_out", 0) > 0:
                         print(f"💨 Episódio {episodes}: Bola saiu lateral/campo.")
                     else:
@@ -95,7 +94,7 @@ def main():
                         new_model = PPO.load(latest_path)
                         model = new_model
                         current_model_path = latest_path
-                        print(f"\n🔄 [ATUALIZAÇÃO EM TEMPO REAL] Novo checkpoint detectado!")
+                        print(f"\n [ATUALIZAÇÃO] Novo checkpoint detectado!")
                         print(f"   Carregado: '{latest_path}'\n")
                     except Exception:
                         pass

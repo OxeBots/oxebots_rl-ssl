@@ -13,7 +13,7 @@ from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 
 
 class SSLELRenderField(VSSRenderField):
-    """renderizada  campo SSL EL (4.5m x 3.0m)."""
+    """renderizada  campo SSL EL (4.5m x 3.0m)"""
     length = 4.5
     width = 3.0
     margin = 0.3
@@ -27,7 +27,7 @@ class SSLELRenderField(VSSRenderField):
 
 class SSLELAttackerEnv(SSLBaseEnv):
     """
-    ammbiente SSL-EL  3v3 para Atacante:
+    ambiente SSL-EL  3v3 para Atacante:
     - campo: 4.5m x 3.0m
     - area de pênalti: 1.350m (eixo Y) x 0.50m (eixo X)
     - robôs 3 Azuis vs 3 Amarelos
@@ -60,7 +60,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             self.field.width / 2, (self.field.length / 2) + self.field.penalty_length
         )
 
-        # rdenrizador gráfico 
+        # redenrizador gráfico 
         self.field_renderer = SSLELRenderField()
         self.window_size = self.field_renderer.window_size
 
@@ -81,7 +81,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             dtype=np.float32,
         )
 
-        # Limites físicos dos atuadores SSL
+        # limites físicos dos atuadores SSL
         self.max_v = 1.5        # Velocidade linear máxima (m/s)
         self.max_w = 5.0       # Velocidade angular máxima (rad/s)
         self.kick_speed_x = 3.0 # Velocidade máxima do chute frontal (m/s)
@@ -106,24 +106,24 @@ class SSLELAttackerEnv(SSLBaseEnv):
         return observation, reward, terminated, truncated, self.reward_shaping_total
 
     def _get_initial_positions_frame(self) -> Frame:
-        """Define onde a bola e cada robô nascem no início de cada episódio."""
+        """define onde a bola e cada robô nascem no início de cada episódio."""
         frame = Frame()
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # bola: posicionada aleatoriamente na intermediária ofensiva/meio
+        # bola posicionada aleatoriamente na intermediária ofensiva/meio
         ball_x = random.uniform(-0.5, 0.6)
         ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
-        # atacante Azul (id 0): posicionado atrás da bola
+        # atacante Azul (id 0)posicionado atrás da bola
         frame.robots_blue[0] = Robot(
             x=random.uniform(-half_len + 0.3, min(-0.15, ball_x - 0.35)),
             y=random.uniform(-half_wid * 0.7, half_wid * 0.7),
             theta=random.uniform(0, 360),
         )
 
-        # dois companheiros azuis (id 1, 2) - Estáticos em posições de apoio
+        # dois companheiros azuis (id 1, 2) estáticos em posições de apoio
         frame.robots_blue[1] = Robot(x=-1.20, y=0.75, theta=0.0)
         frame.robots_blue[2] = Robot(x=-1.20, y=-0.75, theta=0.0)
 
@@ -232,8 +232,8 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
     def _calculate_reward_and_done(self) -> Tuple[float, bool]:
         """
-        FUNÇÃO DE RECOMPENSA ROBUSTA, PROPORCIONAL E BLINDADA CONTRA REWARD HACKING:
-        - 100% Baseada em Teoria de Potencial (PBRS) para aproximação e avanço da bola.
+        
+        - Baseada em Teoria de Potencial (PBRS) para aproximação e avanço da bola.
         - Chute premiado unicamente por impacto/aceleração real transferida para a bola.
         - Sem brechas de acionamento em falso, vibração ou descanso em pontos laterais.
         - Proporcionalidade equilibrada: Gol (+50.0) >> Chute no Alvo (+10.0) >> Tentativa (+4.0) >> Posicionamento (+3.0).
@@ -268,7 +268,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
         goal_w = self.field.goal_width / 2 # 0.35m
 
         # ----------------------------------------------------
-        # 1. Eventos Terminais de Jogo (Gols e Saídas de Bola)
+        # Eventos Terminais de Jogo (Gols e Saídas de Bola)
         # ----------------------------------------------------
         # Gol Válido no Adversário (+50.0 a +60.0)
         if ball.x > half_len and abs(ball.y) < goal_w:
@@ -303,7 +303,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             return reward, done
 
         # ----------------------------------------------------
-        # 2. Violação de Regras pelo Robô (Faltas Terminais)
+        # violação de Regras pelo Robô (Faltas Terminais)
         # ----------------------------------------------------
         if abs(robot.x) > (half_len + 0.05) or abs(robot.y) > (half_wid + 0.05):
             reward = -5.0
@@ -324,7 +324,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             return reward, done
 
         # ----------------------------------------------------
-        # 3. Cálculos Geométricos e Cinemáticos
+        # cálculos Geométricos e Cinemáticos
         # ----------------------------------------------------
         goal_target = np.array([half_len, 0.0])
         ball_pos = np.array([ball.x, ball.y])
@@ -359,7 +359,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
         align_cos = math.cos(rbt_theta_rad - target_angle)
 
         # ----------------------------------------------------
-        # 4. Detecção de Finalização / Chute em Alta Velocidade (+4.0 a +10.0)
+        # detecção de Finalização / Chute em Alta Velocidade (+4.0 a +10.0)
         # ----------------------------------------------------
         is_high_speed_shot = (ball.v_x > 0.8 and ball_v_to_goal > 0.5)
         if is_high_speed_shot:
@@ -383,7 +383,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
         elif ball.v_x < 0.3:
             self.shot_opp_active = False
 
-        # Chute contra a própria meta
+        # Chute contra o próprio gol
         if ball.v_x < -0.8:
             t_own = (-half_len - ball.x) / min(ball.v_x, -1e-6)
             if t_own > 0:
@@ -398,7 +398,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             self.shot_own_active = False
 
         # ----------------------------------------------------
-        # 5. Recompensas Diferenciais de Potencial (Telescópicas e Invariantes)
+        # recompensas Diferenciais de Potencial 
         # ----------------------------------------------------
         if self.last_frame is not None:
             last_ball = self.last_frame.ball
@@ -422,7 +422,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
                 last_target_pos = last_ball_pos - 0.095 * last_dir_b2g
             last_dist_target = float(np.linalg.norm(last_target_pos - last_robot_pos))
 
-            # A) Aproximação da posição de chute / avanço frontal para contato
+            # aproximação da posição de chute / avanço frontal para contato
             diff_move = (last_dist_target - cur_dist_target) * 2.5
             if proj_behind > 0.0 and dist_r2b < 0.25 and align_cos > 0.1:
                 diff_contact = (last_dist_r2b - dist_r2b) * 3.0
@@ -435,13 +435,13 @@ class SSLELAttackerEnv(SSLBaseEnv):
             reward += r_move
             self.reward_shaping_total["move_to_ball"] += r_move
 
-            # B) Avanço da bola até o gol (Potencial Puro: ~15.0 max em todo o campo)
+            # avanço da bola até o gol (Potencial Puro: ~15.0 max em todo o campo)
             diff_ball_goal = (last_dist_b2g - dist_b2g) * 5.0
             r_ball_grad = float(np.clip(diff_ball_goal, -2.5, 2.5))
             reward += r_ball_grad
             self.reward_shaping_total["ball_grad"] += r_ball_grad
 
-            # C) Alinhamento angular diferencial com o gol
+            # alinhamento angular diferencial com o gol
             last_target_angle = math.atan2(last_vec_b2g[1], last_vec_b2g[0])
             last_align_cos = math.cos(math.radians(last_robot.theta) - last_target_angle)
             diff_align = (align_cos - last_align_cos) * 0.5
@@ -449,8 +449,8 @@ class SSLELAttackerEnv(SSLBaseEnv):
             reward += r_align
             self.reward_shaping_total["alignment"] += r_align
 
-            # D) Impulso de aceleração da bola em direção ao gol gerado pelo chute/contato
-            # Concedido EXCLUSIVAMENTE quando há transferência real de momento para a bola!
+            # impulso de aceleração da bola em direção ao gol gerado pelo chute/contato
+            # concedido quando há transferência real de momento para a bola!
             last_ball_vel = np.array([last_ball.v_x, last_ball.v_y])
             last_ball_v_to_goal = float(np.dot(last_ball_vel, last_dir_b2g))
             accel_ball_to_goal = ball_v_to_goal - last_ball_v_to_goal
@@ -464,7 +464,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
                 self.reward_shaping_total["push_to_goal"] += impulse_rw
 
         # ----------------------------------------------------
-        # 6. Contato com Infravermelho
+        # contato com Infravermelho
         # ----------------------------------------------------
         if robot.infrared:
             infra_rw = 0.05
@@ -472,7 +472,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             self.reward_shaping_total["infrared"] += infra_rw
 
         # ----------------------------------------------------
-        # 7. Barreira Repulsiva para a Área do Goleiro Adversário
+        # barreira Repulsiva para a Área do Goleiro Adversário
         # ----------------------------------------------------
         penalty_line_x = half_len - self.field.penalty_length  # 1.75m
         if robot.x > (penalty_line_x - 0.20) and abs(robot.y) < (self.field.penalty_width / 2 + 0.10):
@@ -480,7 +480,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             reward -= 0.20 * dist_near
 
         # ----------------------------------------------------
-        # 8. Penalidade Uniforme de Tempo e Energia
+        # penalidade Uniforme de Tempo e Energia
         # ----------------------------------------------------
         time_rw = -0.015  # Custo uniforme constante por passo (-0.60/segundo)
         energy_rw = float(1e-4 * (abs(robot.v_x) + abs(robot.v_y) + abs(robot.v_theta)))
