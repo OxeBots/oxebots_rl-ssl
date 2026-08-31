@@ -11,8 +11,8 @@ import gymnasium as gym
 import rsoccer_gym
 from stable_baselines3 import PPO
 
-CHECKPOINTS_DIR = "./modelos/checkpoints_ssl_el_attacker/"
-FINAL_MODEL_PATH = "modelos/ssl_el_attacker_ppo_final.zip"
+CHECKPOINTS_DIR = "./modelos/checkpoints_ssl/"
+FINAL_MODEL_PATH = "modelos/ssl_el_ppo_final.zip"
 
 def get_latest_checkpoint():
     """Busca o checkpoint ou modelo mais recente gerado pelo treinamento."""

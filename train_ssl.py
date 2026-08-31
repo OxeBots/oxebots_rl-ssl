@@ -133,7 +133,7 @@ def main():
             tensorboard_log="./tensorboard_ssl_el_attacker/"
         )
 
-    total_timesteps = 5_000_000
+    total_timesteps = 10_000_000
     print(f"\nIniciando treinamento por +{total_timesteps:,} passos...")
     print("Para monitorar o treino em tempo real no navegador:")
     print("  tensorboard --logdir ./tensorboard_ssl_el_attacker/\n")
