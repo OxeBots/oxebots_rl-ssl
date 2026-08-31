@@ -122,7 +122,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
         # dois companheiros azuis (id 1, 2) - Estáticos em posições de apoio
         frame.robots_blue[1] = Robot(x=-1.20, y=0.75, theta=0.0)
-        frame.robots_blue[2] = Robot(x=-1.20, y=-0.75, theta=0.0)
+        frame.robots_blue[2] = Robot(x= random.uniform(0, + 1.50), y=-0.75, theta=0.0)
 
         # goleiro Amarelo (id 0): na linha do gol
         gk_x = (self.field.length / 2) - 0.12
@@ -254,6 +254,8 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
         ball = self.frame.ball
         robot = self.frame.robots_blue[0]
+        robot1 = self.frame.robots_blue[1]
+        robot2 = self.frame.robots_blue[2]
         half_len = self.field.length / 2   # 2.25m
         half_wid = self.field.width / 2    # 1.50m
         goal_w = self.field.goal_width / 2 # 0.35m
@@ -281,83 +283,53 @@ class SSLELAttackerEnv(SSLBaseEnv):
             done = True
             self.reward_shaping_total["area_violation"] -= 5.0
             return reward, done
-
-        # ----------------------------------------------------
-        # 2. Eventos Terminais de Jogo
-        # ----------------------------------------------------
-        # Gol Válido no Adversário (+20.0)
-        if ball.x > half_len and abs(ball.y) < goal_w:
-            reward = 20.0
-            done = True
-            self.reward_shaping_total["goal"] += 20.0
-            return reward, done
-
-        # Gol Sofrido / Gol Contra (-10.0)
-        if ball.x < -half_len and abs(ball.y) < goal_w:
-            reward = -10.0
-            done = True
-            self.reward_shaping_total["goal"] -= 10.0
-            return reward, done
-
-        # Bola fora dos limites do campo (-1.0)
         if abs(ball.x) > (half_len + 0.1) or abs(ball.y) > (half_wid + 0.1):
             reward = -1.0
             done = True
             return reward, done
-
+        
         # ----------------------------------------------------
-        # 3. Chute ao Gol / Detecção de Tiro
+        # 2. Eventos Terminais de Jogo
         # ----------------------------------------------------
-        dist_robot_ball = math.hypot(robot.x - ball.x, robot.y - ball.y)
-        is_near_ball = (dist_robot_ball < 0.25) or robot.infrared
+        # Gol Válido no Adversário (+20.0)
+        dist_ball_r1 = math.hypot(robot1.x - ball.x, robot1.y - ball.y)
+        dist_ball_r2 = math.hypot(robot2.x - ball.x, robot2.y - ball.y)
 
-        # Chute em direção ao gol adversário
-        if ball.v_x > 0.8:
-            t_opp = (half_len - ball.x) / ball.v_x
-            if t_opp > 0:
-                y_proj_opp = ball.y + (ball.v_y * t_opp)
-                if abs(y_proj_opp) <= (goal_w + 0.06):
-                    if is_near_ball and not self.shot_opp_active:
-                        self.shot_opp_active = True
-                        shot_bonus = 3.0
-                        reward += shot_bonus
-                        self.reward_shaping_total["shot_on_goal"] += shot_bonus
-        elif ball.v_x < 0.3:
-            self.shot_opp_active = False
+        if dist_ball_r1 < 0.15 or dist_ball_r2 < 0.15:
+            reward = 20.0
+            done = True
+            self.reward_shaping_total["pass_success"] += 20.0
+            return reward, done
 
-        # Chute em direção à própria meta (penalidade)
-        if ball.v_x < -0.8:
-            t_own = (-half_len - ball.x) / ball.v_x
-            if t_own > 0:
-                y_proj_own = ball.y + (ball.v_y * t_own)
-                if abs(y_proj_own) <= (goal_w + 0.15):
-                    if is_near_ball and not self.shot_own_active:
-                        self.shot_own_active = True
-                        own_shot_penalty = -3.0
-                        reward += own_shot_penalty
-                        self.reward_shaping_total["shot_own_goal"] += own_shot_penalty
-        elif ball.v_x > -0.3:
-            self.shot_own_active = False
 
         # ----------------------------------------------------
         # 4. Recompensas Contínuas com Potential Difference
         # ----------------------------------------------------
-        goal_target = np.array([half_len, 0.0])
         ball_pos = np.array([ball.x, ball.y])
         robot_pos = np.array([robot.x, robot.y])
+        robot1_pos = np.array([robot1.x, robot1.y])
+        robot2_pos = np.array([robot2.x, robot2.y])
 
         # Distâncias atuais
         cur_dist_robot_ball = float(np.linalg.norm(ball_pos - robot_pos))
-        cur_dist_ball_goal = float(np.linalg.norm(goal_target - ball_pos))
+        cur_dist_ball_r1 = float(np.linalg.norm(robot1_pos - ball_pos))
+        cur_dist_ball_r2 = float(np.linalg.norm(robot2_pos - ball_pos))
+        cur_dist_ball_teammate = min(cur_dist_ball_r1, cur_dist_ball_r2)
 
         if self.last_frame is not None:
             last_ball = self.last_frame.ball
             last_robot = self.last_frame.robots_blue[0]
+            last_robot1 = self.last_frame.robots_blue[1]
+            last_robot2 = self.last_frame.robots_blue[2]
             last_ball_pos = np.array([last_ball.x, last_ball.y])
             last_robot_pos = np.array([last_robot.x, last_robot.y])
+            last_robot_pos1 = np.array([last_robot1.x, last_robot1.y])
+            last_robot_pos2 = np.array([last_robot2.x, last_robot2.y])
 
             last_dist_robot_ball = float(np.linalg.norm(last_ball_pos - last_robot_pos))
-            last_dist_ball_goal = float(np.linalg.norm(goal_target - last_ball_pos))
+            last_dist_ball_r1 = float(np.linalg.norm(last_robot_pos1 - last_ball_pos))
+            last_dist_ball_r2 = float(np.linalg.norm(last_robot_pos2 - last_ball_pos))
+            last_dist_ball_teammate = min(last_dist_ball_r1, last_dist_ball_r2)
 
             # A) Diferença de potencial para aproximação até a bola
             diff_move = (last_dist_robot_ball - cur_dist_robot_ball) * 2.0
@@ -366,8 +338,8 @@ class SSLELAttackerEnv(SSLBaseEnv):
             self.reward_shaping_total["move_to_ball"] += r_move
 
             # B) Diferença de potencial do avanço da bola até o gol
-            diff_ball_goal = (last_dist_ball_goal - cur_dist_ball_goal) * 4.0
-            r_ball_grad = float(np.clip(diff_ball_goal, -2.0, 2.0))
+            diff_ball_teammate = (last_dist_ball_teammate - cur_dist_ball_teammate) * 4.0
+            r_ball_grad = float(np.clip(diff_ball_teammate, -2.0, 2.0))
             reward += r_ball_grad
             self.reward_shaping_total["ball_grad"] += r_ball_grad
 
