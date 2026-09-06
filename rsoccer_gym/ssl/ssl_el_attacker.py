@@ -96,14 +96,18 @@ class SSLELAttackerEnv(SSLBaseEnv):
         self.reward_shaping_total = None
         self.shot_opp_active = False
         self.shot_own_active = False
+        self.has_touched_ball = False
+        self.kick_rewarded_this_contact = False
+        self.last_action = np.zeros(4)
         return super().reset(seed=seed, options=options)
-
     def step(self, action):
+
+        self.last_action = action
         observation, reward, terminated, truncated, _ = super().step(action)
         return observation, reward, terminated, truncated, self.reward_shaping_total
 
     def _get_initial_positions_frame(self) -> Frame:
-        """Define onde a bola e cada robô nascem no início de cada episódio."""
+
         frame = Frame()
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
@@ -113,9 +117,19 @@ class SSLELAttackerEnv(SSLBaseEnv):
         ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
-        # atacante Azul (id 0): posicionado atrás da bola
+        # limite seguro de spawn: nunca dentro da própria área de pênalti
+        # área própria termina em -half_field_len + penalty_length, damos uma margem extra
+        min_safe_x = -(self.field.length / 2) + self.field.penalty_length + 0.15
+
+        # atacante Azul (id 0): posicionado atrás da bola, fora da própria área
+        spawn_min_x = max(min_safe_x, -half_len + 0.3)
+        spawn_max_x = min(-0.15, ball_x - 0.35)
+        # salvaguarda: se o range ficar invertido (bola muito perto do fundo), usa um intervalo fixo mínimo
+        if spawn_min_x >= spawn_max_x:
+            spawn_max_x = spawn_min_x + 0.2
+
         frame.robots_blue[0] = Robot(
-            x=random.uniform(-half_len + 0.3, min(-0.15, ball_x - 0.35)),
+            x=random.uniform(spawn_min_x, spawn_max_x),
             y=random.uniform(-half_wid * 0.7, half_wid * 0.7),
             theta=random.uniform(0, 360),
         )
@@ -240,16 +254,16 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {
-                "goal": 0.0,
-                "shot_on_goal": 0.0,
-                "shot_own_goal": 0.0,
+                "pass_success": 0.0,
                 "area_violation": 0.0,
                 "out_of_bounds": 0.0,
                 "ball_grad": 0.0,
                 "move_to_ball": 0.0,
                 "alignment": 0.0,
                 "infrared": 0.0,
+                "first_touch":0.0,
                 "energy": 0.0,
+                "kick_button": 0.0,
             }
 
         ball = self.frame.ball
@@ -296,9 +310,9 @@ class SSLELAttackerEnv(SSLBaseEnv):
         dist_ball_r2 = math.hypot(robot2.x - ball.x, robot2.y - ball.y)
 
         if dist_ball_r1 < 0.15 or dist_ball_r2 < 0.15:
-            reward = 20.0
+            reward = 50.0
             done = True
-            self.reward_shaping_total["pass_success"] += 20.0
+            self.reward_shaping_total["pass_success"] += 50.0
             return reward, done
 
 
@@ -339,28 +353,60 @@ class SSLELAttackerEnv(SSLBaseEnv):
 
             # B) Diferença de potencial do avanço da bola até o gol
             diff_ball_teammate = (last_dist_ball_teammate - cur_dist_ball_teammate) * 4.0
-            r_ball_grad = float(np.clip(diff_ball_teammate, -2.0, 2.0))
+            r_ball_grad = float(np.clip(diff_ball_teammate, -5.0, 5.0))
             reward += r_ball_grad
             self.reward_shaping_total["ball_grad"] += r_ball_grad
-
-        # C) Alinhamento angular do robô de frente para a bola (quando próximo)
+        else:
+            diff_move = 0.0   # <-- garante que a variável sempre existe
+      # C) Alinhamento angular do robô de frente para a bola (quando próximo)
         vec_to_ball = ball_pos - robot_pos
         ang_to_ball = math.atan2(vec_to_ball[1], vec_to_ball[0])
         rbt_theta_rad = math.radians(robot.theta)
-        ang_align = math.cos(rbt_theta_rad - ang_to_ball)
-        if cur_dist_robot_ball < 0.5:
-            align_rw = float(0.02 * max(0.0, ang_align))
+        
+        if cur_dist_robot_ball < 0.5 and not robot.infrared:
+            ang_align = math.cos(rbt_theta_rad - ang_to_ball)
+            if diff_move > 0:
+                align_rw = float(0.02 * max(0.0, ang_align))
+                reward += align_rw
+                self.reward_shaping_total["alignment"] += align_rw
+        
+        elif robot.infrared:
+            # Descobre qual aliado está mais perto para mirar nele
+            target_pos = robot1_pos if cur_dist_ball_r1 < cur_dist_ball_r2 else robot2_pos
+            vec_to_target = target_pos - robot_pos
+            ang_to_target = math.atan2(vec_to_target[1], vec_to_target[0])
+            
+            ang_align_target = math.cos(rbt_theta_rad - ang_to_target)
+            
+            align_rw = float(0.005 * max(0.0, ang_align_target))
             reward += align_rw
             self.reward_shaping_total["alignment"] += align_rw
-
-        # D) Bônus por contato frontal e condução da bola
+        # D) Bônus por contato (primeiro toque no episódio recebe reward extra
+        #    para dar um sinal claro e não-esparso de que buscar a bola compensa)
         if robot.infrared:
-            infra_rw = 0.05
-            if ball.v_x > 0.3:
-                infra_rw += float(0.05 * min(ball.v_x, 3.0))
+            infra_rw = 0.0
             reward += infra_rw
             self.reward_shaping_total["infrared"] += infra_rw
 
+            if not self.has_touched_ball:
+                first_touch_rw = 3.0
+                reward += first_touch_rw
+                self.reward_shaping_total["first_touch"] += first_touch_rw
+                self.has_touched_ball = True
+
+            # D.2) A Dica do Chute: reward único por CONTATO (não por step)
+            # Só dispara na primeira vez que o botão é apertado dentro
+            # da mesma sequência de contato contínuo com a bola.
+            if hasattr(self, 'last_action') and self.last_action[3] > 0:
+                if not self.kick_rewarded_this_contact:
+                    kick_rw = 1.0
+                    reward += kick_rw
+                    self.reward_shaping_total["kick_button"] += kick_rw
+                    self.kick_rewarded_this_contact = True
+        else:
+            # Perdeu contato com a bola -> reseta a trava,
+            # permitindo novo bônus na próxima sequência de contato
+            self.kick_rewarded_this_contact = False
         # E) Barreira Repulsiva para a área do goleiro adversário
         penalty_line_x = half_len - self.field.penalty_length  # 1.75m
         if robot.x > (penalty_line_x - 0.25) and abs(robot.y) < (self.field.penalty_width / 2 + 0.1):
@@ -368,7 +414,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
             reward -= 0.15 * dist_near
 
         # F) Penalidade suave de tempo (-0.001 por step para incentivar rapidez) e energia
-        time_rw = -0.001
+        time_rw = -0.005
         energy_rw = float(1e-4 * (abs(robot.v_x) + abs(robot.v_y) + abs(robot.v_theta)))
         reward += time_rw - energy_rw
         self.reward_shaping_total["energy"] -= (abs(time_rw) + energy_rw)
