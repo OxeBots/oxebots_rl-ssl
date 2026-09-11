@@ -154,6 +154,8 @@ cython_debug/
 # Logs
 *tfevents*
 *wandb/
+wandb/
+.wandb
 *.exb
 
 # Poetry
