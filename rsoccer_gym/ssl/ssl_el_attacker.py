@@ -313,7 +313,7 @@ class SSLELAttackerEnv(SSLBaseEnv):
         # ----------------------------------------------------
         dist_ball_r1 = math.hypot(robot1.x - ball.x, robot1.y - ball.y)
         dist_ball_r2 = math.hypot(robot2.x - ball.x, robot2.y - ball.y)
-        pass_success_radius = 0.35  # Raio de domínio/recepção de robôs SSL
+        pass_success_radius = 0.16  # Raio de domínio/recepção de robôs SSL
 
         if dist_ball_r1 < pass_success_radius or dist_ball_r2 < pass_success_radius:
             reward = 50.0
