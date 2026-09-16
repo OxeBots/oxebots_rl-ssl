@@ -22,12 +22,13 @@ class OnnxablePolicy(nn.Module):
 
 def export_to_onnx(model, save_path="modelos/ssl_el_attacker.onnx"):
     """Exporta a política treinada para o formato ONNX (otimizado para ROS / C++ / Python)."""
+    orig_device = getattr(model, "device", "cpu")
     try:
         import onnx
-        onnx_policy = OnnxablePolicy(model.policy)
+        onnx_policy = OnnxablePolicy(model.policy).to("cpu")
         onnx_policy.eval()
 
-        dummy_input = torch.randn(1, 49, dtype=torch.float32)
+        dummy_input = torch.randn(1, 49, dtype=torch.float32, device="cpu")
         torch.onnx.export(
             onnx_policy,
             dummy_input,
@@ -47,6 +48,11 @@ def export_to_onnx(model, save_path="modelos/ssl_el_attacker.onnx"):
         print(f"📦 Modelo ONNX exportado com sucesso em: {save_path}")
     except Exception as e:
         print(f"⚠️ Aviso: Falha na exportação automática para ONNX: {e}")
+    finally:
+        try:
+            model.policy.to(orig_device)
+        except Exception:
+            pass
 
 
 def make_env(rank: int, seed: int = 42):
