@@ -34,3 +34,9 @@ register(
     entry_point="rsoccer_gym.ssl.ssl_el_attacker:SSLELAttackerEnv",
     max_episode_steps=1200,
 )
+
+register(
+    id="SSL-EL-Defender-v0",
+    entry_point="rsoccer_gym.ssl.ssl_el_defender:SSLELDefenderEnv",
+    max_episode_steps=1200,
+)
