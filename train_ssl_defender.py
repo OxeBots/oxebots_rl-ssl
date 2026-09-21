@@ -128,7 +128,9 @@ def make_env(rank: int, seed: int = 42):
 
 
 def main():
-    num_envs = 8  # Número de processos simultâneos (ótimo para CPUs multi-core)
+    total_cpus = os.cpu_count() or 8
+    default_envs = max(1, total_cpus - 2) if total_cpus > 4 else total_cpus
+    num_envs = int(os.environ.get("NUM_ENVS", default_envs))
     checkpoint_dir = "./modelos/checkpoints_ssl_el_defender/"
     model_dir = "./modelos/"
     os.makedirs(checkpoint_dir, exist_ok=True)
