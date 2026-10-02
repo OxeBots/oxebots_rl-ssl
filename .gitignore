@@ -158,3 +158,6 @@ cython_debug/
 
 # Poetry
 poetry.lock
+
+checkpoints
+modelos/checkpoints_ssl_el_defender/

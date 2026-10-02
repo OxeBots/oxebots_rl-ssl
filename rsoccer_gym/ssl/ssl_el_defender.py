@@ -27,12 +27,12 @@ class SSLELRenderField(VSSRenderField):
 
 class SSLELDefenderEnv(SSLBaseEnv):
     """
-    ammbiente SSL-EL 3v3 para Atacante:
+    Ambiente SSL-EL 3v3 para Defensor:
     - campo: 4.5m x 3.0m
     - area de pênalti: 1.350m (eixo Y) x 0.50m (eixo X)
     - robôs 3 Azuis vs 3 Amarelos
-    - atacante amarelo (0): controlado por uma política PPO congelada
-    - defensor azul (0): controlado pelo agente em treinamento
+    - defensor azul (0): controlado pelo agente em treinamento (lado esquerdo)
+    - atacante amarelo (0): controlado por uma política básica (lado direito)
     - demais robôs estáticos
     - dribbler = False
     - ações: [v_x, v_y, v_theta, kick_x]
@@ -111,33 +111,33 @@ class SSLELDefenderEnv(SSLBaseEnv):
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # bola: posicionada aleatoriamente na intermediária ofensiva/meio
-        ball_x = random.uniform(-0.5, 0.6)
+        # bola: posicionada aleatoriamente na intermediária/meio do campo
+        ball_x = random.uniform(-0.6, 0.5)
         ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
-        # atacante Amarelo (id 0): posicionado atrás da bola
+        # defensor Azul (id 0): perto do gol azul (lado esquerdo) — agente RL
+        gk_x = -(self.field.length / 2) + 0.12
+        frame.robots_blue[0] = Robot(
+            x=gk_x,
+            y=0.0,
+            theta=0.0,
+        )
+
+        # dois companheiros azuis (id 1, 2) - estáticos em posições defensivas (lado esquerdo)
+        frame.robots_blue[1] = Robot(x=-0.90, y=0.70, theta=0.0)
+        frame.robots_blue[2] = Robot(x=-0.90, y=-0.70, theta=0.0)
+
+        # atacante Amarelo (id 0): posicionado atrás da bola (lado direito) — política básica
         frame.robots_yellow[0] = Robot(
-            x=random.uniform(-half_len + 0.3, min(-0.15, ball_x - 0.35)),
+            x=random.uniform(max(0.15, ball_x + 0.35), half_len - 0.3),
             y=random.uniform(-half_wid * 0.7, half_wid * 0.7),
             theta=random.uniform(0, 360),
         )
 
-        # dois companheiros amarelos (id 1, 2) - estáticos em posições de apoio
-        frame.robots_yellow[1] = Robot(x=-1.20, y=0.75, theta=0.0)
-        frame.robots_yellow[2] = Robot(x=-1.20, y=-0.75, theta=0.0)
-
-        # defensor Azul (id 0): na linha do gol
-        gk_x = (self.field.length / 2) - 0.12
-        frame.robots_blue[0] = Robot(
-            x=gk_x,
-            y=0.0,
-            theta=180.0,
-        )
-
-        # dois companheiros azuis (id 1, 2) - estáticos em posições defensivas
-        frame.robots_blue[1] = Robot(x=0.90, y=0.70, theta=180.0)
-        frame.robots_blue[2] = Robot(x=0.90, y=-0.70, theta=180.0)
+        # dois companheiros amarelos (id 1, 2) - estáticos em posições de apoio (lado direito)
+        frame.robots_yellow[1] = Robot(x=1.20, y=0.75, theta=180.0)
+        frame.robots_yellow[2] = Robot(x=1.20, y=-0.75, theta=180.0)
 
         return frame
 
@@ -161,16 +161,16 @@ class SSLELDefenderEnv(SSLBaseEnv):
 
     def _compute_basic_attacker_command(self):
         """
-        Comportamento básico do atacante: vai até a bola e chuta em direção
-        ao gol do adversário (lado positivo de X).
+        Comportamento básico do atacante amarelo: vai até a bola e chuta
+        em direção ao gol azul (lado negativo de X).
         Usa controle proporcional simples.
         """
         attacker = self.frame.robots_yellow[0]
         ball = self.frame.ball
         half_len = self.field.length / 2  # 2.25m
 
-        # Alvo do chute: centro do gol adversário (lado +X)
-        goal_target = np.array([half_len, 0.0])
+        # Alvo do chute: centro do gol azul (lado -X)
+        goal_target = np.array([-half_len, 0.0])
         ball_pos = np.array([ball.x, ball.y])
         att_pos = np.array([attacker.x, attacker.y])
 
@@ -231,12 +231,13 @@ class SSLELDefenderEnv(SSLBaseEnv):
         )
 
     def _get_commands(self, action):
-        """Gera comandos para o atacante básico e para o defensor (agente RL)."""
+        """Gera comandos para o defensor (agente RL) e o atacante básico."""
         commands = []
 
         # Comando do defensor Azul (ID 0), controlado pelo PPO em treinamento.
         angle = np.deg2rad(self.frame.robots_blue[0].theta)
         v_x, v_y, v_theta = self.convert_actions(action, angle)
+        kick_x = self.kick_speed_x if action[3] > 0 else 0.0
 
         commands.append(
             Robot(
@@ -245,7 +246,7 @@ class SSLELDefenderEnv(SSLBaseEnv):
                 v_x=v_x,
                 v_y=v_y,
                 v_theta=v_theta,
-                kick_v_x=0.0,
+                kick_v_x=kick_x,
                 kick_v_z=0.0,
                 dribbler=False,
             )
@@ -337,15 +338,15 @@ class SSLELDefenderEnv(SSLBaseEnv):
         # ----------------------------------------------------
         # 1. Eventos Terminais de Defesa
         # ----------------------------------------------------
-        # Gol Sofrido (Bola entra no gol Azul: X > 2.25 e |Y| < 0.35)
-        if ball.x > half_len and abs(ball.y) < goal_w:
+        # Gol Sofrido (Bola entra no gol Azul: X < -2.25 e |Y| < 0.35)
+        if ball.x < -half_len and abs(ball.y) < goal_w:
             reward = -50.0
             done = True
             self.reward_shaping_total["goal_conceded"] += reward
             return reward, done
 
-        # Bola Afastada (Bola cruza o meio de campo para o lado Amarelo: X < 0)
-        if ball.x < 0.0:
+        # Bola Afastada (Bola cruza o meio de campo para o lado Amarelo: X > 0)
+        if ball.x > 0.0:
             reward = 40.0
             done = True
             self.reward_shaping_total["ball_cleared"] += reward
@@ -353,7 +354,7 @@ class SSLELDefenderEnv(SSLBaseEnv):
 
         # Bola Saiu de Campo (Lateral ou Linha de fundo fora do gol)
         # Se saiu de campo sem ser gol, consideramos defesa bem-sucedida
-        if abs(ball.y) > half_wid or (ball.x > half_len and abs(ball.y) >= goal_w) or ball.x < -half_len:
+        if abs(ball.y) > half_wid or (ball.x < -half_len and abs(ball.y) >= goal_w) or ball.x > half_len:
             reward = 20.0
             done = True
             self.reward_shaping_total["ball_out"] += reward
@@ -363,7 +364,7 @@ class SSLELDefenderEnv(SSLBaseEnv):
         # 2. Violação de Regras pelo Defensor
         # ----------------------------------------------------
         # O goleiro pode entrar no próprio gol (até goal_depth), mas não pode sair pelas outras linhas
-        is_out_x = robot.x > (half_len + self.field.goal_depth) or robot.x < -(half_len + 0.05)
+        is_out_x = robot.x < -(half_len + self.field.goal_depth) or robot.x > (half_len + 0.05)
         is_out_y = abs(robot.y) > (half_wid + 0.05)
         if is_out_x or is_out_y:
             reward = -50.0  # MESMA PENALIDADE DO GOL SOFRIDO! Evita reward hack de "suicídio".
@@ -371,9 +372,8 @@ class SSLELDefenderEnv(SSLBaseEnv):
             self.reward_shaping_total["out_of_bounds"] -= 50.0
             return reward, done
 
-        # O defensor não pode ir para a área do goleiro amarelo (x < -1.75)
-        # Note que is_yellow_area=False significa área no lado negativo (x < -1.75)
-        if self._is_inside_penalty_area(robot.x, robot.y, is_yellow_area=False):
+        # O defensor não pode ir para a área do goleiro amarelo (x > +1.75)
+        if self._is_inside_penalty_area(robot.x, robot.y, is_yellow_area=True):
             reward = -50.0
             done = True
             self.reward_shaping_total["area_violation"] -= 50.0
@@ -382,7 +382,7 @@ class SSLELDefenderEnv(SSLBaseEnv):
         # ----------------------------------------------------
         # 3. Potenciais Contínuos (Positioning e Ball Distance)
         # ----------------------------------------------------
-        goal_center = np.array([half_len, 0.0])
+        goal_center = np.array([-half_len, 0.0])
         ball_pos = np.array([ball.x, ball.y])
         robot_pos = np.array([robot.x, robot.y])
 

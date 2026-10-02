@@ -4,8 +4,8 @@ Permite rodar QUALQUER ambiente com QUALQUER modelo salvo via linha de comando.
 
 Exemplos de uso:
   python play.py                                      # Busca e roda o modelo mais recente
-  python play.py --env SSL-EL-v0 --model ssl_el_attacker_ppo_final
-  python play.py --env VSS-v0 --model vss_atacante_ppo
+  python play.py --env SSL-EL-v0 --model modelos/meu_modelo_ppo
+  python play.py --env VSS-v0 --model modelos/outro_modelo_ppo
   python play.py --env SSL-EL-v0                      # Roda sem modelo (ações aleatórias para testar física)
 """
 
