@@ -111,8 +111,8 @@ class SSLELDefenderEnv(SSLBaseEnv):
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # bola: posicionada aleatoriamente na intermediária/meio do campo
-        ball_x = random.uniform(-0.6, 0.5)
+        # bola: posicionada aleatoriamente na intermediária/meio do campo (lado do defensor)
+        ball_x = random.uniform(-0.6, -0.1)
         ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
