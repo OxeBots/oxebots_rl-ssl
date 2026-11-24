@@ -58,9 +58,9 @@ def export_to_onnx(model, save_path: str, n_obs: int = 49):
         if os.path.exists(data_file):
             os.remove(data_file)
 
-        print(f"📦 [ONNX] Modelo exportado com sucesso em: {save_path}")
+        print(f"[ONNX] Modelo exportado com sucesso em: {save_path}")
     except (OSError, RuntimeError, ValueError) as e:
-        print(f"⚠️ [ONNX] Aviso: Falha na exportação automática para ONNX: {e}")
+        print(f"[ONNX] Aviso: Falha na exportação automática para ONNX: {e}")
 
 
 def make_single_env(env_id: str, config: dict, rank: int, seed: int = 42):
@@ -127,7 +127,7 @@ def train_single_agent(config: dict):
     if clean_checkpoints:
         old_cps = glob.glob(os.path.join(checkpoints_dir, "*.zip"))
         if old_cps:
-            print(f"🧹 Limpando {len(old_cps)} checkpoints intermediários anteriores...")
+            print(f"[INFO] Limpando {len(old_cps)} checkpoints intermediários anteriores...")
             for f in old_cps:
                 try:
                     os.remove(f)
@@ -154,7 +154,7 @@ def train_single_agent(config: dict):
     # Inicialização ou carregamento de modelo existente
     is_resumed = False
     if resume and os.path.exists(final_model_zip):
-        print(f"\n📂 Modelo prévio encontrado: '{final_model_zip}'")
+        print(f"\n[INFO] Modelo prévio encontrado: '{final_model_zip}'")
         print("   Continuando treinamento a partir dos pesos existentes...")
         model = PPO.load(
             final_model_path,
@@ -173,7 +173,7 @@ def train_single_agent(config: dict):
         )
         is_resumed = True
     else:
-        print("\n✨ Criando novo modelo PPO...")
+        print("\n[INFO] Criando novo modelo PPO...")
         model = PPO(
             "MlpPolicy",
             env=env,
@@ -203,8 +203,8 @@ def train_single_agent(config: dict):
 
     # Salva o modelo final
     model.save(final_model_path)
-    print("\n✅ Treinamento concluído com sucesso!")
-    print(f"💾 Modelo final salvo em: {final_model_zip}")
+    print("\n[OK] Treinamento concluído com sucesso!")
+    print(f"[INFO] Modelo final salvo em: {final_model_zip}")
 
     # Exportação para ONNX
     if auto_export:

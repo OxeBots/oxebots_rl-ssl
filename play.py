@@ -113,12 +113,12 @@ def main():
     if model_path:
         load_target = model_path if model_path.endswith(".zip") else f"{model_path}.zip"
         if os.path.exists(load_target):
-            print(f"\n📂 Carregando modelo treinado: '{load_target}'")
+            print(f"\n[INFO] Carregando modelo treinado: '{load_target}'")
             model = PPO.load(model_path)
             use_trained = True
 
     if not use_trained:
-        print("\n⚠️ Nenhum modelo treinado encontrado. Executando com ações aleatórias de teste...")
+        print("\n[AVISO] Nenhum modelo treinado encontrado. Executando com ações aleatórias de teste...")
 
     obs, info = env.reset()
     episodes = 0
@@ -142,18 +142,18 @@ def main():
                 if isinstance(info, dict):
                     if info.get("goal", 0) > 0:
                         goals += 1
-                        print(f"⚽ Episódio {episodes}: GOL MARCADO! (Total gols: {goals})")
+                        print(f"[GOL] Episódio {episodes}: Gol marcado! (Total gols: {goals})")
                     elif info.get("goal", 0) < 0:
-                        print(f"🥅 Episódio {episodes}: GOL SOFRIDO / CONTRA!")
+                        print(f"[GOL CONTRA] Episódio {episodes}: Gol sofrido / contra!")
                     elif info.get("area_violation", 0) < 0:
                         violations += 1
-                        print(f"🛑 Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
+                        print(f"[FALTA] Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
                     elif info.get("out_of_bounds", 0) < 0:
-                        print(f"🚫 Episódio {episodes}: Robô ou bola fora de campo!")
+                        print(f"[FORA] Episódio {episodes}: Robô ou bola fora de campo!")
                     elif info.get("shot_on_goal", 0) > 0:
-                        print(f"🎯 Episódio {episodes}: Chute potente a gol no alvo defendido!")
+                        print(f"[CHUTE] Episódio {episodes}: Chute potente a gol no alvo defendido!")
                     else:
-                        print(f"⏱️ Episódio {episodes}: Finalizado.")
+                        print(f"[FIM] Episódio {episodes}: Finalizado.")
 
                 if args.episodes > 0 and episodes >= args.episodes:
                     break

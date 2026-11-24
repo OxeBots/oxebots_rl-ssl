@@ -90,10 +90,10 @@ def main():
         current_model_path = get_latest_checkpoint(checkpoints_dir, final_model_path)
         if current_model_path:
             break
-        print("⏳ Aguardando primeiro checkpoint ser salvo pelo treino (train.py)...")
+        print("[INFO] Aguardando primeiro checkpoint ser salvo pelo treino (train.py)...")
         time.sleep(5)
 
-    print(f"✅ Checkpoint inicial detectado: '{current_model_path}'\n")
+    print(f"[OK] Checkpoint inicial detectado: '{current_model_path}'\n")
     model = PPO.load(current_model_path)
 
     obs, info = env.reset()
@@ -114,12 +114,12 @@ def main():
                 if isinstance(info, dict):
                     if info.get("goal", 0) > 0:
                         goals += 1
-                        print(f"⚽ Episódio {episodes}: GOL MARCADO! (Total gols: {goals})")
+                        print(f"[GOL] Episódio {episodes}: Gol marcado! (Total gols: {goals})")
                     elif info.get("area_violation", 0) < 0:
                         violations += 1
-                        print(f"🛑 Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
+                        print(f"[FALTA] Episódio {episodes}: Invasão de área! (Total faltas: {violations})")
                     elif info.get("out_of_bounds", 0) < 0:
-                        print(f"🚫 Episódio {episodes}: Fora de campo!")
+                        print(f"[FORA] Episódio {episodes}: Fora de campo!")
 
                 # Verifica se um checkpoint mais recente foi salvo
                 latest_path = get_latest_checkpoint(checkpoints_dir, final_model_path)
@@ -129,7 +129,7 @@ def main():
                         new_model = PPO.load(latest_path)
                         model = new_model
                         current_model_path = latest_path
-                        print("\n🔄 [ATUALIZAÇÃO AO VIVO] Novo checkpoint carregado!")
+                        print("\n[ATUALIZACAO AO VIVO] Novo checkpoint carregado!")
                         print(f"   Arquivo: '{latest_path}'\n")
                     except (OSError, RuntimeError, ValueError) as e:
                         print(f"Aviso ao carregar checkpoint: {e}")

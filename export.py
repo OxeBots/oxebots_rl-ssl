@@ -73,7 +73,7 @@ def export_model(model_path: str, output_path: str, n_obs: int = 49, n_actions: 
     max_diff = np.max(np.abs(torch_out - ort_out))
     print(f"Diferença máxima absoluta: {max_diff:.8f}")
     assert max_diff < 1e-4, f"Falha na validação ONNX! Diferença excessiva: {max_diff}"
-    print("✅ Paridade matemática 100% validada!")
+    print("[OK] Paridade matemática 100% validada!")
 
     # Geração do arquivo model_metadata.json para o ROS 2
     metadata_path = output_path.replace(".onnx", "_metadata.json")
@@ -99,7 +99,7 @@ def export_model(model_path: str, output_path: str, n_obs: int = 49, n_actions: 
 
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
-    print(f"📄 Metadados de deploy salvos em: '{metadata_path}'")
+    print(f"[INFO] Metadados de deploy salvos em: '{metadata_path}'")
 
 
 def main():
