@@ -33,8 +33,8 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/config_single.yaml",
-        help="Caminho do arquivo YAML de configuração",
+        default="config/config.yaml",
+        help="Caminho do arquivo YAML de configuração (padrão: config/config.yaml)",
     )
     parser.add_argument(
         "--delay",

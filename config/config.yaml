@@ -1,17 +1,18 @@
 # ==============================================================================
-# CONFIGURAÇÃO DE TREINO: SINGLE-AGENT (SB3 PPO) - OXEBOTS RL-SSL
+# CONFIGURAÇÃO UNIVERSAL OXEBOTS RL-SSL
+# Alterne entre Single e Multi-Agent apenas mudando mode_single (true / false)!
 # ==============================================================================
 
-# Modo de Treinamento
-mode: "single-agent"
+# --- MODO DE TREINAMENTO (BOOLEANO PRINCIPAL) ---
+mode_single: true              # true: Single-Agent (SB3 PPO) | false: Multi-Agent (MAPPO)
 
 # --- AMBIENTE E ATUADORES FÍSICOS DO ROBÔ ---
 environment:
-  id: "SSL-EL-v0"              # Ambiente SSL Entry Level (Campo 4.5m x 3.0m)
+  id: "SSL-EL-v0"              # Ambiente oficial SSL Entry Level (Campo 4.5m x 3.0m)
   max_steps: 600               # Duração máxima do episódio (15s @ 40Hz)
   
   # Atuadores físicos (Hardware):
-  enable_dribbler: false       # true: ativa motor do drible | false: desativado (SSL-EL padrão)
+  enable_dribbler: false       # true: ativa motor do drible | false: desativado (padrão SSL-EL)
   enable_kicker: true          # true: permite chutar a bola | false: sem chute (apenas condução)
 
 # --- RECOMPENSAS E PENALIDADES (Ative/Desative com Booleano e Ajuste o Valor) ---
@@ -34,6 +35,14 @@ rewards:
   infrared:
     enabled: true
     value: 0.05                # Bônus de toque direto no sensor óptico/chutador
+  
+  # Recompensas específicas para quando mode_single = false (Multi-Agent):
+  pass_completed:
+    enabled: true
+    value: 15.0                # Bônus por passe completado com sucesso entre atacantes
+  support_position:
+    enabled: true
+    value: 3.0                 # Bônus de desmarcação do robô sem bola
 
 penalties:
   area_violation:
@@ -47,7 +56,7 @@ penalties:
     value: -20.0               # Penalidade severa caso a bola entre no próprio gol
   time_cost:
     enabled: true
-    value: -0.015              # Custo por passo (força o robô a ser rápido)
+    value: -0.015              # Custo por passo (força rapidez)
   energy_cost:
     enabled: true
     value: 0.0001              # Custo por velocidade/giro (evita vibração excessiva)
@@ -56,26 +65,26 @@ penalties:
 monitoring:
   # 1. TensorBoard (Curvas de aprendizado no navegador: http://localhost:6006)
   enable_tensorboard: true
-  tensorboard_dir: "./logs/tensorboard_single/"
+  tensorboard_dir: "./logs/tensorboard/"
 
   # 2. Checkpoints (Pasta que o play_live.py assiste em tempo real no Pygame)
-  checkpoints_dir: "./logs/checkpoints_single/"
+  checkpoints_dir: "./logs/checkpoints/"
   save_freq_steps: 50000       # Salva checkpoint a cada 50k passos totais
 
 # --- FLUXO DO TREINAMENTO ---
 training:
-  use_cuda: false             # true: roda em GPU (se disponível) | false: CPU
+  use_cuda: true               # true: roda em GPU (se disponível) | false: CPU
   resume_training: true        # true: se existir modelo anterior salvo, continua dele
-  clean_old_checkpoints: true  # true: limpa checkpoints intermediários de treinos anteriores
+  clean_old_checkpoints: true  # true: limpa checkpoints intermediários antigos
   auto_export_onnx: true       # true: exporta automaticamente para ONNX ao terminar
   progress_bar: true           # true: barra de progresso no terminal
   
   total_timesteps: 5000000     # Passos totais de simulação
-  n_envs: 8                    # Processos paralelos simultâneos (SubprocVecEnv)
+  n_envs: 8                    # Processos paralelos simultâneos
   seed: 42
-  final_model_path: "./modelos/ssl_el_single_final"
+  final_model_path: "./modelos/ssl_el_final"
 
-# --- HIPERPARÂMETROS DO PPO (STABLE-BASELINES3) ---
+# --- HIPERPARÂMETROS STABLE-BASELINES3 (PPO - Single-Agent) ---
 ppo:
   learning_rate: 0.0003
   n_steps: 1024
@@ -85,3 +94,15 @@ ppo:
   gae_lambda: 0.95
   clip_range: 0.2
   ent_coef: 0.005
+
+# --- HIPERPARÂMETROS MAPPO (Multi-Agent) ---
+mappo:
+  actor_lr: 0.0003
+  critic_lr: 0.0005
+  n_steps: 1024
+  batch_size: 128
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01

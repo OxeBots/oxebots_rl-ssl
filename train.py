@@ -233,15 +233,15 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/config_single.yaml",
-        help="Caminho do arquivo YAML de configuração",
+        default="config/config.yaml",
+        help="Caminho do arquivo YAML de configuração (padrão: config/config.yaml)",
     )
     args = parser.parse_args()
 
     config = load_yaml_config(args.config)
-    mode = config.get("mode", "single-agent")
+    is_single = config.get("mode_single", True)
 
-    if mode == "multi-agent":
+    if not is_single or config.get("mode") == "multi-agent":
         train_multi_agent(config)
     else:
         train_single_agent(config)

@@ -4,9 +4,9 @@ from rewards.reward_multi import MultiAgentReward
 
 
 def get_reward_function(config: dict) -> BaseReward:
-    """Fábrica para instanciar a função de recompensa correta a partir do YAML."""
-    mode = config.get("mode", "single-agent")
-    if mode == "multi-agent":
+    """Fábrica que entrega a recompensa certa baseado no booleano mode_single do config.yaml."""
+    is_single = config.get("mode_single", True)
+    if not is_single or config.get("mode") == "multi-agent":
         return MultiAgentReward(config)
     return SingleAgentReward(config)
 

@@ -34,8 +34,8 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/config_single.yaml",
-        help="Arquivo YAML de configuração (opcional)",
+        default="config/config.yaml",
+        help="Arquivo YAML de configuração (padrão: config/config.yaml)",
     )
     parser.add_argument(
         "--model",
