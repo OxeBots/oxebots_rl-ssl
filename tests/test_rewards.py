@@ -1,4 +1,9 @@
-from rewards import MultiAgentReward, SingleAgentReward, get_reward_function
+from rewards import (
+    MultiAgentReward,
+    SingleAgentReward,
+    get_reward_function,
+    register_reward,
+)
 from rewards.base_reward import BaseReward
 
 
@@ -47,3 +52,20 @@ def test_reward_reset():
     reward_fn.shot_opp_active = True
     reward_fn.reset()
     assert reward_fn.shot_opp_active is False
+
+
+def test_custom_role_reward_registration():
+    class DummyGoalkeeperReward(BaseReward):
+        def calculate(self, env, action, last_frame, frame, sent_commands):
+            return 10.0, False, {"save": 10.0}
+
+    register_reward("goalkeeper", DummyGoalkeeperReward)
+
+    cfg = {"rewards": {"role": "goalkeeper"}}
+    reward_fn = get_reward_function(cfg)
+    assert isinstance(reward_fn, DummyGoalkeeperReward)
+    assert isinstance(reward_fn, BaseReward)
+
+    cfg_direct = {"role": "goalkeeper"}
+    reward_fn_direct = get_reward_function(cfg_direct)
+    assert isinstance(reward_fn_direct, DummyGoalkeeperReward)

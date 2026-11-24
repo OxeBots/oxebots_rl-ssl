@@ -269,6 +269,65 @@ python play.py --model modelos/ssl_el_final
 
 ---
 
+### Criando um Novo Papel Especializado (Exemplo: Goleiro ou Defensor)
+
+Para treinar um papel diferente de atacante (como um **goleiro**), a física do simulador continua idêntica, mas os objetivos matemáticos mudam. O framework permite plugar novos papéis em dois passos:
+
+#### 1. Configurar as recompensas do papel no YAML
+
+No `config/config.yaml`, você pode adicionar as recompensas específicas do goleiro sem alterar a estrutura do arquivo. O sistema lê chaves customizadas dinamicamente:
+
+```yaml
+rewards:
+  role: "goalkeeper"           # Identificador do papel
+  ball_defended:
+    enabled: true
+    value: 30.0                # Bônus por bloquear a trajetória da bola
+  stay_in_goal_area:
+    enabled: true
+    value: 1.0                 # Bônus contínuo por posicionamento na pequena área
+  intercept_trajectory:
+    enabled: true
+    value: 5.0                 # Incentivo para fechar o ângulo de chute
+
+penalties:
+  conceded_goal:
+    enabled: true
+    value: -50.0               # Penalidade pesada por sofrer gol
+  left_goal_area:
+    enabled: true
+    value: -5.0                # Penalidade por abandonar a área de defesa
+```
+
+#### 2. Implementar a classe de recompensa em Python
+
+Crie a classe herdando de `BaseReward` (por exemplo em `rewards/reward_goalkeeper.py`):
+
+```python
+from rewards.base_reward import BaseReward
+from rewards import register_reward
+
+class GoalkeeperReward(BaseReward):
+    def calculate(self, env, action, last_frame, frame, sent_commands):
+        # Lê os valores configurados no YAML automaticamente:
+        reward_save = self.get_reward_val("ball_defended", default=30.0)
+        penalty_goal = self.get_penalty_val("conceded_goal", default=-50.0)
+
+        reward = 0.0
+        done = False
+        info = {}
+
+        # Lógica de física e posicionamento do goleiro...
+        return reward, done, info
+
+# Registra o novo papel no sistema
+register_reward("goalkeeper", GoalkeeperReward)
+```
+
+Ao iniciar `python train.py`, o ambiente instanciará automaticamente a classe `GoalkeeperReward` mapeada para o papel.
+
+---
+
 ## Exportação ONNX e Integração com ROS 2 / C++
 
 O script `export.py` converte a rede neural treinada para o padrão aberto ONNX e gera o arquivo de metadados:
