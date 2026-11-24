@@ -99,6 +99,7 @@ role: "attacker"
 ```yaml
 environment:
   max_steps: 600
+  set_piece: "default"         # Opções: "default" (aleatório) | "corner" (escanteio) | "penalty" | "free_kick"
   enable_dribbler: false
   enable_kicker: true
 
@@ -191,6 +192,7 @@ Abra `config/config.yaml` e configure o seu cenário:
    ```yaml
    environment:
      max_steps: 600
+     set_piece: "default"     # "default" (aleatório) ou "corner" (escanteio), "penalty", "free_kick"
      enable_dribbler: false   # true se o robô tiver motor de drible | false se não tiver
      enable_kicker: true      # true para permitir chute
      field:
