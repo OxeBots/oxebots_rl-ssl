@@ -107,8 +107,14 @@ class SSLELEnv(SSLBaseEnv):
         enable_kicker=True,
         max_steps=600,
         field_params=None,
+        set_piece="default",
     ):
         self.field_config = get_field_configuration(field_params)
+        self.set_piece = str(
+            set_piece
+            or (field_params.get("set_piece") if isinstance(field_params, dict) else "")
+            or "default"
+        ).lower()
 
         super().__init__(
             field_type=self.field_config["field_type"],
@@ -232,17 +238,51 @@ class SSLELEnv(SSLBaseEnv):
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # Bola: posicionada aleatoriamente na região intermediária
-        ball_x = random.uniform(-0.12 * self.field.length, 0.15 * self.field.length)
-        ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
-        frame.ball = Ball(x=ball_x, y=ball_y)
+        if self.set_piece == "corner":
+            # Jogada ensaiada: Escanteio
+            side_y = random.choice([-1.0, 1.0])
+            ball_x = half_len * 0.95
+            ball_y = side_y * half_wid * 0.95
+            frame.ball = Ball(x=ball_x, y=ball_y)
+            target_angle = np.rad2deg(np.arctan2(-ball_y, 0.0 - ball_x))
+            frame.robots_blue[0] = Robot(
+                x=ball_x - 0.25,
+                y=ball_y - 0.20 * side_y,
+                theta=target_angle,
+            )
+        elif self.set_piece == "penalty":
+            # Jogada ensaiada: Pênalti
+            ball_x = (self.field.length / 2) - self.field.penalty_length - 0.50
+            ball_y = 0.0
+            frame.ball = Ball(x=ball_x, y=ball_y)
+            frame.robots_blue[0] = Robot(
+                x=ball_x - 0.35,
+                y=random.uniform(-0.10, 0.10),
+                theta=0.0,
+            )
+        elif self.set_piece == "free_kick":
+            # Jogada ensaiada: Falta frontal no campo de ataque
+            ball_x = random.uniform(0.08 * self.field.length, 0.25 * self.field.length)
+            ball_y = random.uniform(-half_wid * 0.6, half_wid * 0.6)
+            frame.ball = Ball(x=ball_x, y=ball_y)
+            target_angle = np.rad2deg(np.arctan2(-ball_y, (self.field.length / 2) - ball_x))
+            frame.robots_blue[0] = Robot(
+                x=ball_x - 0.30,
+                y=ball_y + random.uniform(-0.10, 0.10),
+                theta=target_angle,
+            )
+        else:
+            # Padrão: posicionamento intermediário aleatório
+            ball_x = random.uniform(-0.12 * self.field.length, 0.15 * self.field.length)
+            ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
+            frame.ball = Ball(x=ball_x, y=ball_y)
 
-        # Agente Azul (ID 0): posicionado atrás da bola
-        frame.robots_blue[0] = Robot(
-            x=random.uniform(-half_len + 0.3, min(-0.15, ball_x - 0.35)),
-            y=random.uniform(-half_wid * 0.7, half_wid * 0.7),
-            theta=random.uniform(0, 360),
-        )
+            # Agente Azul (ID 0): posicionado atrás da bola
+            frame.robots_blue[0] = Robot(
+                x=random.uniform(-half_len + 0.3, min(-0.15, ball_x - 0.35)),
+                y=random.uniform(-half_wid * 0.7, half_wid * 0.7),
+                theta=random.uniform(0, 360),
+            )
 
         # Companheiros Azuis (IDs 1 e 2): posições de apoio
         frame.robots_blue[1] = Robot(

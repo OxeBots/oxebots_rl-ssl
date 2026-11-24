@@ -30,18 +30,13 @@ register(
     max_episode_steps=1200,
 )
 
-# ==============================================================================
-# Ambientes Oficiais OxeBots SSL Entry Level (SSL-EL)
-# ==============================================================================
-
-# 1. Single-Agent: Base SSL-EL com Recompensa Plug-and-Play (Atacante / Defensor / Passe)
+# Ambientes oficiais OxeBots SSL Entry Level (SSL-EL)
 register(
     id="SSL-EL-v0",
     entry_point="rsoccer_gym.ssl.ssl_el:SSLELEnv",
     max_episode_steps=1200,
 )
 
-# 2. Multi-Agent: Cooperação de Atacantes (MAPPO / CTDE)
 register(
     id="SSL-EL-Coop-v0",
     entry_point="rsoccer_gym.ssl.ssl_el_multi:SSLELMultiEnv",

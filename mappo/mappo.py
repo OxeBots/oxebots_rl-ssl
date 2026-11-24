@@ -294,7 +294,8 @@ def train_mappo(config: dict):
 
     field_params = env_cfg.get("field", {})
     env_id = env_cfg.get("id") or "SSL-EL-Coop-v0"
-    env = gym.make(env_id, field_params=field_params)
+    set_piece = env_cfg.get("set_piece", "default")
+    env = gym.make(env_id, field_params=field_params, set_piece=set_piece)
 
     agents = env.unwrapped.agents
     device = "cuda" if torch.cuda.is_available() else "cpu"

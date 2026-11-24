@@ -78,6 +78,7 @@ def make_single_env(env_id: str, config: dict, rank: int, seed: int = 42):
             enable_kicker=env_cfg.get("enable_kicker", True),
             max_steps=env_cfg.get("max_steps", 600),
             field_params=env_cfg.get("field", {}),
+            set_piece=env_cfg.get("set_piece", "default"),
         )
         env.reset(seed=seed + rank)
         return env

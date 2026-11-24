@@ -53,3 +53,13 @@ def test_multi_env_division_b_preset():
     assert obs_dict["blue_0"].shape == (35,)
     assert obs_dict["blue_1"].shape == (35,)
     env.close()
+
+
+def test_multi_env_set_pieces():
+    for piece in ["corner", "penalty", "free_kick", "default"]:
+        env = gym.make("SSL-EL-Coop-v0", set_piece=piece)
+        obs_dict, _ = env.reset(seed=42)
+        assert obs_dict["blue_0"].shape == (35,)
+        assert obs_dict["blue_1"].shape == (35,)
+        assert env.unwrapped.set_piece == piece
+        env.close()

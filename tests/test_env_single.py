@@ -114,3 +114,12 @@ def test_single_env_custom_dimensions():
     obs, _ = env.reset(seed=42)
     assert obs.shape == (49,)
     env.close()
+
+
+def test_single_env_set_pieces():
+    for piece in ["corner", "penalty", "free_kick", "default"]:
+        env = gym.make("SSL-EL-v0", set_piece=piece)
+        obs, _ = env.reset(seed=42)
+        assert obs.shape == (49,)
+        assert env.unwrapped.set_piece == piece
+        env.close()

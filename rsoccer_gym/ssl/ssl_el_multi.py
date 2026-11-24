@@ -31,8 +31,13 @@ class SSLELMultiEnv(SSLBaseEnv):
     agents: ClassVar[list[str]] = ["blue_0", "blue_1"]
     possible_agents: ClassVar[list[str]] = ["blue_0", "blue_1"]
 
-    def __init__(self, render_mode=None, field_params=None):
+    def __init__(self, render_mode=None, field_params=None, set_piece="default"):
         self.field_config = get_field_configuration(field_params)
+        self.set_piece = str(
+            set_piece
+            or (field_params.get("set_piece") if isinstance(field_params, dict) else "")
+            or "default"
+        ).lower()
 
         super().__init__(
             field_type=self.field_config["field_type"],
@@ -257,31 +262,75 @@ class SSLELMultiEnv(SSLBaseEnv):
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # Bola no lado esquerdo / intermediária
-        ball_x = random.uniform(-0.18 * self.field.length, 0.05 * self.field.length)
-        ball_y = random.uniform(-half_wid * 0.6, half_wid * 0.6)
-        frame.ball = Ball(x=ball_x, y=ball_y)
+        if self.set_piece == "corner":
+            side_y = random.choice([-1.0, 1.0])
+            ball_x = half_len * 0.95
+            ball_y = side_y * half_wid * 0.95
+            frame.ball = Ball(x=ball_x, y=ball_y)
 
-        # Robô Azul 0 (Passador / Atacante 1) posicionado atrás da bola
-        b0_x = ball_x - random.uniform(0.20, 0.40)
-        b0_y = ball_y + random.uniform(-0.15, 0.15)
-        angle_b0 = np.rad2deg(math.atan2(ball_y - b0_y, ball_x - b0_x))
-        frame.robots_blue[0] = Robot(
-            x=np.clip(b0_x, -half_len, half_len),
-            y=np.clip(b0_y, -half_wid, half_wid),
-            theta=angle_b0,
-        )
+            # Passador no escanteio
+            b0_x = ball_x - 0.25
+            b0_y = ball_y - 0.20 * side_y
+            target_angle_b0 = np.rad2deg(math.atan2(-ball_y, 0.0 - ball_x))
+            frame.robots_blue[0] = Robot(x=b0_x, y=b0_y, theta=target_angle_b0)
 
-        # Robô Azul 1 (Receptor / Atacante 2) posicionado no flanco ofensivo oposto
-        sign_y = -1.0 if ball_y >= 0 else 1.0
-        b1_x = random.uniform(0.0, 0.27 * self.field.length)
-        b1_y = sign_y * random.uniform(0.4, half_wid * 0.85)
-        target_goal_angle = np.rad2deg(math.atan2(-b1_y, (self.field.length / 2) - b1_x))
-        frame.robots_blue[1] = Robot(
-            x=b1_x,
-            y=b1_y,
-            theta=target_goal_angle,
-        )
+            # Atacante 2 infiltrando na área oposta para finalizar
+            b1_x = random.uniform(0.10 * self.field.length, 0.28 * self.field.length)
+            b1_y = -side_y * random.uniform(0.2, half_wid * 0.7)
+            target_goal_angle = np.rad2deg(math.atan2(-b1_y, (self.field.length / 2) - b1_x))
+            frame.robots_blue[1] = Robot(x=b1_x, y=b1_y, theta=target_goal_angle)
+        elif self.set_piece == "penalty":
+            ball_x = (self.field.length / 2) - self.field.penalty_length - 0.50
+            ball_y = 0.0
+            frame.ball = Ball(x=ball_x, y=ball_y)
+
+            frame.robots_blue[0] = Robot(x=ball_x - 0.35, y=0.0, theta=0.0)
+            frame.robots_blue[1] = Robot(x=ball_x - 0.8, y=0.8, theta=0.0)
+        elif self.set_piece == "free_kick":
+            ball_x = random.uniform(0.08 * self.field.length, 0.22 * self.field.length)
+            ball_y = random.uniform(-half_wid * 0.5, half_wid * 0.5)
+            frame.ball = Ball(x=ball_x, y=ball_y)
+
+            b0_x = ball_x - 0.30
+            b0_y = ball_y + random.uniform(-0.10, 0.10)
+            target_angle_b0 = np.rad2deg(math.atan2(ball_y - b0_y, ball_x - b0_x))
+            frame.robots_blue[0] = Robot(x=b0_x, y=b0_y, theta=target_angle_b0)
+
+            sign_y = -1.0 if ball_y >= 0 else 1.0
+            b1_x = ball_x + random.uniform(0.3, 0.8)
+            b1_y = ball_y + sign_y * random.uniform(0.5, 1.2)
+            target_goal_angle = np.rad2deg(math.atan2(-b1_y, (self.field.length / 2) - b1_x))
+            frame.robots_blue[1] = Robot(
+                x=np.clip(b1_x, -half_len, half_len),
+                y=np.clip(b1_y, -half_wid, half_wid),
+                theta=target_goal_angle,
+            )
+        else:
+            # Bola no lado esquerdo / intermediária
+            ball_x = random.uniform(-0.18 * self.field.length, 0.05 * self.field.length)
+            ball_y = random.uniform(-half_wid * 0.6, half_wid * 0.6)
+            frame.ball = Ball(x=ball_x, y=ball_y)
+
+            # Robô Azul 0 (Passador / Atacante 1) posicionado atrás da bola
+            b0_x = ball_x - random.uniform(0.20, 0.40)
+            b0_y = ball_y + random.uniform(-0.15, 0.15)
+            angle_b0 = np.rad2deg(math.atan2(ball_y - b0_y, ball_x - b0_x))
+            frame.robots_blue[0] = Robot(
+                x=np.clip(b0_x, -half_len, half_len),
+                y=np.clip(b0_y, -half_wid, half_wid),
+                theta=angle_b0,
+            )
+
+            # Robô Azul 1 (Receptor / Atacante 2) posicionado no flanco ofensivo oposto
+            sign_y = -1.0 if ball_y >= 0 else 1.0
+            b1_x = random.uniform(0.0, 0.27 * self.field.length)
+            b1_y = sign_y * random.uniform(0.4, half_wid * 0.85)
+            target_goal_angle = np.rad2deg(math.atan2(-b1_y, (self.field.length / 2) - b1_x))
+            frame.robots_blue[1] = Robot(
+                x=b1_x,
+                y=b1_y,
+                theta=target_goal_angle,
+            )
 
         # Robô Azul 2 (Apoio estático na defesa)
         frame.robots_blue[2] = Robot(x=-0.33 * self.field.length, y=0.0, theta=0.0)

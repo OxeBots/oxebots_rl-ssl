@@ -20,6 +20,7 @@ def test_config_structure():
     assert isinstance(env_cfg.get("enable_dribbler"), bool)
     assert isinstance(env_cfg.get("enable_kicker"), bool)
     assert isinstance(env_cfg.get("max_steps"), int)
+    assert isinstance(env_cfg.get("set_piece", "default"), str)
 
     assert "field" in env_cfg, "Seção 'environment.field' ausente"
     field_cfg = env_cfg["field"]

@@ -6,6 +6,7 @@ role: "attacker"               # Papel do agente: "attacker" (padrão) | "goalke
 # Ambiente e atuadores
 environment:
   max_steps: 600               # Duração máxima do episódio (15s @ 40Hz)
+  set_piece: "default"         # Opções: "default" | "corner" (escanteio) | "penalty" (pênalti) | "free_kick" (falta)
   
   # Atuadores físicos (Hardware):
   enable_dribbler: false       # true: ativa motor do drible | false: desativado (padrão SSL-EL)

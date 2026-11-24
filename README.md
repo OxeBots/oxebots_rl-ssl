@@ -331,6 +331,54 @@ Ao iniciar `python train.py`, o ambiente instanciará automaticamente a classe `
 
 ---
 
+### Jogadas Ensaiadas (Set Pieces: Escanteio, Pênalti, Falta)
+
+Em situações de **jogadas ensaiadas**, o robô continua executando o papel de atacante (ou atacantes cooperativos), porém o treinamento parte de uma **situação inicial específica da bola e dos robôs**.
+
+O framework oferece duas formas de configurar jogadas ensaiadas:
+
+#### Opção A: Presets Prontos no `config/config.yaml`
+
+Basta definir o parâmetro `set_piece` dentro de `environment`:
+
+```yaml
+environment:
+  max_steps: 600
+  set_piece: "corner"          # Opções: "default" | "corner" | "penalty" | "free_kick"
+```
+
+- **`"default"`**: Distribuição intermediária com bola em posições variadas do campo.
+- **`"corner"` (Escanteio)**: Bola posicionada no corner ofensivo e atacante alinhado atrás da bola apontando para a área adversária (no modo multi-agente, o segundo atacante infiltra na área para finalizar).
+- **`"penalty"` (Pênalti)**: Bola na marca oficial do pênalti, atacante alinhado de frente para o gol e goleiro adversário defendendo a meta.
+- **`"free_kick"` (Falta Frontal)**: Bola no terço ofensivo com atacante pronto para cobrança de falta direta ou passe.
+
+#### Opção B: Personalização Direta no Script Python
+
+Caso deseje criar uma jogada com coordenadas cartesianas exatas (ex: lateral ou jogada de dois toques customizada), edite o método `_get_initial_positions_frame()` dentro do ambiente:
+
+- Para single-agent: em `rsoccer_gym/ssl/ssl_el.py` (linha ~230)
+- Para multi-agent: em `rsoccer_gym/ssl/ssl_el_multi.py` (linha ~250)
+
+Exemplo de modificação no Python:
+
+```python
+def _get_initial_positions_frame(self) -> Frame:
+    frame = Frame()
+
+    # 1. Posicione a bola nas coordenadas desejadas (em metros):
+    frame.ball = Ball(x=1.5, y=0.8)
+
+    # 2. Posicione o robô cobrador atrás da bola com a orientação (theta em graus):
+    frame.robots_blue[0] = Robot(x=1.2, y=0.8, theta=0.0)
+
+    # 3. Posicione companheiros ou adversários:
+    frame.robots_yellow[0] = Robot(x=2.1, y=0.0, theta=180.0) # Goleiro adversário
+
+    return frame
+```
+
+---
+
 ## Exportação ONNX e Integração com ROS 2 / C++
 
 O script `export.py` converte a rede neural treinada para o padrão aberto ONNX e gera o arquivo de metadados:
