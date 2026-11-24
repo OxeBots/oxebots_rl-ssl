@@ -197,7 +197,7 @@ class SSLELEnv(SSLBaseEnv):
             self.norm_v(self.frame.ball.v_y),
         ]
 
-        # 3 robôs Azuis (com sensor infravermelho no ID 0)
+        # Robôs azuis (com sensor infravermelho no ID 0)
         for i in range(self.n_robots_blue):
             r = self.frame.robots_blue[i]
             obs.extend([
@@ -211,7 +211,7 @@ class SSLELEnv(SSLBaseEnv):
                 1.0 if r.infrared else 0.0,
             ])
 
-        # 3 robôs Amarelos
+        # Robôs amarelos
         for i in range(self.n_robots_yellow):
             r = self.frame.robots_yellow[i]
             obs.extend([
@@ -285,7 +285,7 @@ class SSLELEnv(SSLBaseEnv):
         """Monta a lista de comandos para os 6 robôs em campo."""
         commands = []
 
-        # Robô Azul 0 (Agente RL)
+        # Robô azul 0 (agente)
         angle = np.deg2rad(self.frame.robots_blue[0].theta)
         v_x, v_y, v_theta = self.convert_actions(actions, angle)
 
@@ -307,7 +307,7 @@ class SSLELEnv(SSLBaseEnv):
             )
         )
 
-        # Companheiros Azuis (1 e 2) estáticos
+        # Companheiros azuis estáticos
         for i in [1, 2]:
             commands.append(
                 Robot(
@@ -322,7 +322,7 @@ class SSLELEnv(SSLBaseEnv):
                 )
             )
 
-        # Robôs Amarelos (0, 1 e 2) estáticos
+        # Robôs amarelos estáticos
         for i in range(self.n_robots_yellow):
             commands.append(
                 Robot(

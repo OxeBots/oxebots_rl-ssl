@@ -58,21 +58,19 @@ class SingleAgentReward(BaseReward):
         half_wid = env.field.width / 2.0
         goal_w = env.field.goal_width / 2.0
 
-        # ----------------------------------------------------
-        # 1. Eventos Terminais de Jogo (Gols e Saídas)
-        # ----------------------------------------------------
-        # Gol no Adversário
+        # Eventos terminais de jogo (gols e saídas)
+        # Gol no adversário
         if ball.x > half_len and abs(ball.y) < goal_w:
             if self.is_enabled("rewards", "goal"):
                 goal_val = self.get_reward_val("goal", 50.0)
                 if self.shot_opp_active or ball.v_x > 0.8:
-                    goal_val += 10.0  # Bônus por gol de chute potente
+                    goal_val += 10.0  # bônus por gol de chute potente
                 reward = goal_val
                 info["goal"] += goal_val
             done = True
             return reward, done, info
 
-        # Gol Contra
+        # Gol contra
         if ball.x < -half_len and abs(ball.y) < goal_w:
             if self.is_enabled("penalties", "own_goal"):
                 own_goal_val = self.get_penalty_val("own_goal", -20.0)
@@ -90,10 +88,8 @@ class SingleAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # ----------------------------------------------------
-        # 2. Violação de Regras pelo Robô (Faltas Terminais)
-        # ----------------------------------------------------
-        # Invasão de Área (adversária ou própria)
+        # Violação de regras pelo robô (faltas terminais)
+        # Invasão de área (adversária ou própria)
         penalty_line_x = half_len - env.field.penalty_length
         is_in_opp_area = (robot.x > penalty_line_x) and (abs(robot.y) < env.field.penalty_width / 2.0)
         is_in_own_area = (robot.x < -penalty_line_x) and (abs(robot.y) < env.field.penalty_width / 2.0)
@@ -115,9 +111,7 @@ class SingleAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # ----------------------------------------------------
-        # 3. Chute em Direção ao Gol Adversário
-        # ----------------------------------------------------
+        # Chute em direção ao gol adversário
         cur_ball_pos = np.array([ball.x, ball.y])
         opp_goal_pos = np.array([half_len, 0.0])
         vec_b2g = opp_goal_pos - cur_ball_pos
@@ -137,9 +131,7 @@ class SingleAgentReward(BaseReward):
                 reward += shot_rw
                 info["shot_on_goal"] += shot_rw
 
-        # ----------------------------------------------------
-        # 4. Potencial de Aproximação (PBRS) e Alinhamento
-        # ----------------------------------------------------
+        # Potencial de aproximação (PBRS) e alinhamento
         robot_pos = np.array([robot.x, robot.y])
         dist_r2b = float(np.linalg.norm(cur_ball_pos - robot_pos))
 
@@ -187,9 +179,7 @@ class SingleAgentReward(BaseReward):
             reward += infra_val
             info["infrared"] += infra_val
 
-        # ----------------------------------------------------
-        # 5. Penalidades Contínuas de Tempo e Energia
-        # ----------------------------------------------------
+        # Penalidades contínuas de tempo e energia
         if self.is_enabled("penalties", "time_cost"):
             t_cost = self.get_penalty_val("time_cost", -0.015)
             reward += t_cost

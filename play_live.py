@@ -71,7 +71,7 @@ def main():
     reward_fn = get_reward_function(config)
     field_params = env_cfg.get("field", {})
 
-    # 1. Criação do ambiente com renderização gráfica 2D
+    # Criação do ambiente com renderização gráfica 2D
     try:
         env = gym.make(
             env_id,
@@ -85,7 +85,7 @@ def main():
     except TypeError:
         env = gym.make(env_id, render_mode="human")
 
-    # 2. Aguarda o primeiro checkpoint caso nenhum exista
+    # Aguarda o primeiro checkpoint caso nenhum exista
     print(f"\nProcurando checkpoints em: '{checkpoints_dir}'...")
     current_model_path = None
     while True:

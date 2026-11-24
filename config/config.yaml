@@ -1,12 +1,8 @@
-# ==============================================================================
-# CONFIGURAÇÃO UNIVERSAL OXEBOTS RL-SSL
-# Alterne entre Single e Multi-Agent apenas mudando mode_single (true / false)!
-# ==============================================================================
+# Configuração 
+# Modo de treino: true para single-agent (SB3 PPO), false para multi-agent (MAPPO)
+mode_single: true
 
-# --- MODO DE TREINAMENTO (BOOLEANO PRINCIPAL) ---
-mode_single: true              # true: Single-Agent (SB3 PPO) | false: Multi-Agent (MAPPO)
-
-# --- AMBIENTE E ATUADORES FÍSICOS DO ROBÔ ---
+# Ambiente e atuadores
 environment:
   id: "SSL-EL-v0"              # Ambiente oficial SSL Entry Level (Campo 4.5m x 3.0m)
   max_steps: 600               # Duração máxima do episódio (15s @ 40Hz)
@@ -15,8 +11,7 @@ environment:
   enable_dribbler: false       # true: ativa motor do drible | false: desativado (padrão SSL-EL)
   enable_kicker: true          # true: permite chutar a bola | false: sem chute (apenas condução)
 
-  # Dimensões e Presets do Campo (Entry Level vs Divisão B):
-  # Para mudar para a Divisão B, basta alterar preset para "division_b" (ou ajustar as medidas abaixo)
+  # Dimensões e presets do campo
   field:
     preset: "entry"            # Opções: "entry" (4.5m x 3.0m) | "division_b" (9.0m x 6.0m) | "custom"
     length: 4.5                # Comprimento do campo em metros (Entry: 4.5 | Divisão B: 9.0)
@@ -26,7 +21,7 @@ environment:
     goal_width: 0.70           # Largura do gol em metros (Entry: 0.70 | Divisão B: 1.0)
     goal_depth: 0.18           # Profundidade do gol em metros (0.18)
 
-# --- RECOMPENSAS E PENALIDADES (Ative/Desative com Booleano e Ajuste o Valor) ---
+# Recompensas e penalidades
 rewards:
   goal:
     enabled: true
@@ -47,7 +42,7 @@ rewards:
     enabled: true
     value: 0.05                # Bônus de toque direto no sensor óptico/chutador
   
-  # Recompensas específicas para quando mode_single = false (Multi-Agent):
+  # Recompensas para o modo multi-agent
   pass_completed:
     enabled: true
     value: 15.0                # Bônus por passe completado com sucesso entre atacantes
@@ -72,17 +67,17 @@ penalties:
     enabled: true
     value: 0.0001              # Custo por velocidade/giro (evita vibração excessiva)
 
-# --- OS 2 PONTOS DE MONITORAMENTO ---
+# Monitoramento
 monitoring:
-  # 1. TensorBoard (Curvas de aprendizado no navegador: http://localhost:6006)
+  # TensorBoard
   enable_tensorboard: true
   tensorboard_dir: "./logs/tensorboard/"
 
-  # 2. Checkpoints (Pasta que o play_live.py assiste em tempo real no Pygame)
+  # Checkpoints para o play_live.py
   checkpoints_dir: "./logs/checkpoints/"
   save_freq_steps: 50000       # Salva checkpoint a cada 50k passos totais
 
-# --- FLUXO DO TREINAMENTO ---
+# Treinamento
 training:
   use_cuda: true               # true: roda em GPU (se disponível) | false: CPU
   resume_training: true        # true: se existir modelo anterior salvo, continua dele
@@ -95,7 +90,7 @@ training:
   seed: 42
   final_model_path: "./modelos/ssl_el_final"
 
-# --- HIPERPARÂMETROS STABLE-BASELINES3 (PPO - Single-Agent) ---
+# Hiperparâmetros PPO (single-agent)
 ppo:
   learning_rate: 0.0003
   n_steps: 1024
@@ -106,7 +101,7 @@ ppo:
   clip_range: 0.2
   ent_coef: 0.005
 
-# --- HIPERPARÂMETROS MAPPO (Multi-Agent) ---
+# Hiperparâmetros MAPPO (multi-agent)
 mappo:
   actor_lr: 0.0003
   critic_lr: 0.0005

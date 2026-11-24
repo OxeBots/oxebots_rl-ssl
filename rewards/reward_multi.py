@@ -47,7 +47,7 @@ class MultiAgentReward(BaseReward):
         half_wid = env.field.width / 2.0
         goal_w = env.field.goal_width / 2.0
 
-        # 1. Gol Coletivo
+        # Gol coletivo
         if ball.x > half_len and abs(ball.y) < goal_w:
             if self.is_enabled("rewards", "goal"):
                 goal_val = self.get_reward_val("goal", 60.0)
@@ -56,7 +56,7 @@ class MultiAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # 2. Gol Contra
+        # Gol contra
         if ball.x < -half_len and abs(ball.y) < goal_w:
             if self.is_enabled("penalties", "own_goal"):
                 own_goal_val = self.get_penalty_val("own_goal", -25.0)
@@ -64,7 +64,7 @@ class MultiAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # 3. Violação de área por qualquer um dos atacantes
+        # Violação de área por qualquer um dos atacantes
         penalty_line_x = half_len - env.field.penalty_length
         viol_0 = (blue_0.x > penalty_line_x) and (abs(blue_0.y) < env.field.penalty_width / 2.0)
         viol_1 = (blue_1.x > penalty_line_x) and (abs(blue_1.y) < env.field.penalty_width / 2.0)
@@ -77,7 +77,7 @@ class MultiAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # 4. Bola fora de campo
+        # Bola fora de campo
         if abs(ball.x) > (half_len + 0.1) or abs(ball.y) > (half_wid + 0.1):
             if self.is_enabled("penalties", "out_of_bounds"):
                 out_val = self.get_penalty_val("out_of_bounds", -2.0)
@@ -86,7 +86,7 @@ class MultiAgentReward(BaseReward):
             done = True
             return reward, done, info
 
-        # 5. PBRS de avanço da bola até o gol
+        # PBRS de avanço da bola até o gol
         if self.is_enabled("rewards", "ball_to_goal"):
             cur_dist_b2g = float(np.linalg.norm(np.array([half_len, 0.0]) - np.array([ball.x, ball.y])))
             last_dist_b2g = float(np.linalg.norm(np.array([half_len, 0.0]) - np.array([last_frame.ball.x, last_frame.ball.y])))
@@ -96,7 +96,7 @@ class MultiAgentReward(BaseReward):
             reward += r_b2g
             info["ball_grad"] += r_b2g
 
-        # 6. Bônus de Passe Concluído
+        # Bônus de passe concluído
         if self.is_enabled("rewards", "pass_completed") and (
             (last_frame.robots_blue[0].infrared and blue_1.infrared)
             or (last_frame.robots_blue[1].infrared and blue_0.infrared)
@@ -105,7 +105,7 @@ class MultiAgentReward(BaseReward):
             reward += pass_val
             info["pass_completed"] += pass_val
 
-        # 7. Custo de Tempo
+        # Custo de tempo
         if self.is_enabled("penalties", "time_cost"):
             t_cost = self.get_penalty_val("time_cost", -0.015)
             reward += t_cost

@@ -74,17 +74,14 @@ class SSLELMultiEnv(SSLBaseEnv):
         # Para compatibilidade com gymnasium standard
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(4,), dtype=np.float32)
 
-        # =========================================================================
-        # Espaço de Observação Local Descentralizado (Por Agente - 35 dimensões):
-        # 1. Agente próprio (8): [x, y, sin(th), cos(th), v_x, v_y, v_th, infrared]
-        # 2. Bola relativa/global (6): [x, y, v_x, v_y, dist_to_ball, angle_to_ball]
-        # 3. Companheiro blue (8): [rel_x, rel_y, sin(th), cos(th), v_x, v_y, v_th, infrared]
-        # 4. Companheiro estático blue_2 (2): [rel_x, rel_y]
-        # 5. Adversários yellow 0, 1, 2 (2 cada = 6): [rel_x, rel_y]
-        # 6. One-hot Agent ID (2): [1, 0] para blue_0, [0, 1] para blue_1
-        # 7. Posse estimada / Contexto de passe (3): [has_possession, in_partner_cone, ball_towards_me]
-        # Total = 8 + 6 + 8 + 2 + 6 + 2 + 3 = 35 dimensões
-        # =========================================================================
+        # Espaço de observação local descentralizado (35 dimensões por agente):
+        # - Agente próprio (8): [x, y, sin(th), cos(th), v_x, v_y, v_th, infrared]
+        # - Bola relativa/global (6): [x, y, v_x, v_y, dist_to_ball, angle_to_ball]
+        # - Companheiro blue (8): [rel_x, rel_y, sin(th), cos(th), v_x, v_y, v_th, infrared]
+        # - Companheiro estático blue_2 (2): [rel_x, rel_y]
+        # - Adversários yellow 0, 1, 2 (2 cada = 6): [rel_x, rel_y]
+        # - One-hot Agent ID (2): [1, 0] para blue_0, [0, 1] para blue_1
+        # - Posse estimada / contexto de passe (3): [has_possession, in_partner_cone, ball_towards_me]
         self.num_local_obs = 35
         self.observation_space_dict = {
             agent: gym.spaces.Box(
@@ -102,10 +99,8 @@ class SSLELMultiEnv(SSLBaseEnv):
             dtype=np.float32,
         )
 
-        # =========================================================================
-        # Estado Global para o Crítico Centralizado (CTDE - 53 dimensões):
-        # Bola (4) + 3 Azuis (8 cada = 24) + 3 Amarelos (7 cada = 21) + Features Contextuais (4)
-        # =========================================================================
+        # Estado global para o crítico centralizado (CTDE - 53 dimensões):
+        # Bola (4) + 3 azuis (8 cada = 24) + 3 amarelos (7 cada = 21) + métricas contextuais (4)
         self.num_state_features = 4 + (8 * self.n_robots_blue) + (7 * self.n_robots_yellow) + 4
         self.state_space = gym.spaces.Box(
             low=-self.NORM_BOUNDS,
@@ -210,7 +205,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             self.norm_v(ball.v_y),
         ]
 
-        # 3 robôs Azuis
+        # Robôs azuis
         for i in range(self.n_robots_blue):
             r = self.frame.robots_blue[i]
             state.extend([
@@ -224,7 +219,7 @@ class SSLELMultiEnv(SSLBaseEnv):
                 1.0 if r.infrared else 0.0,
             ])
 
-        # 3 robôs Amarelos
+        # Robôs amarelos
         for i in range(self.n_robots_yellow):
             r = self.frame.robots_yellow[i]
             state.extend([
@@ -549,7 +544,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         support = self.frame.robots_blue[2]
         ball = self.frame.ball
 
-        # 1. Próprio robô (8)
+        # Próprio robô (8)
         obs = [
             self.norm_pos(me.x),
             self.norm_pos(me.y),
@@ -561,7 +556,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             1.0 if me.infrared else 0.0,
         ]
 
-        # 2. Bola em coordenadas relativas e globais (6)
+        # Bola em coordenadas relativas e globais (6)
         rel_bx = ball.x - me.x
         rel_by = ball.y - me.y
         dist_b = float(np.linalg.norm([rel_bx, rel_by]))
@@ -576,7 +571,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             float(ang_b_norm / math.pi),
         ])
 
-        # 3. Companheiro parceiro ativo (8)
+        # Companheiro parceiro ativo (8)
         rel_px = partner.x - me.x
         rel_py = partner.y - me.y
         obs.extend([
@@ -590,13 +585,13 @@ class SSLELMultiEnv(SSLBaseEnv):
             1.0 if partner.infrared else 0.0,
         ])
 
-        # 4. Companheiro estático de suporte (2)
+        # Companheiro estático de suporte (2)
         obs.extend([
             self.norm_pos(support.x - me.x),
             self.norm_pos(support.y - me.y),
         ])
 
-        # 5. Adversários Amarelos relativos (6)
+        # Adversários amarelos relativos (6)
         for i in range(self.n_robots_yellow):
             opp = self.frame.robots_yellow[i]
             obs.extend([
@@ -604,10 +599,10 @@ class SSLELMultiEnv(SSLBaseEnv):
                 self.norm_pos(opp.y - me.y),
             ])
 
-        # 6. One-hot Agent ID (2)
+        # One-hot Agent ID (2)
         obs.extend([1.0, 0.0] if is_blue_0 else [0.0, 1.0])
 
-        # 7. Contexto de Passe / Posicionamento (3)
+        # Contexto de passe e posicionamento (3)
         has_possession = 1.0 if (dist_b < 0.18 or me.infrared) else 0.0
         vec_p_to_me = np.array([me.x - partner.x, me.y - partner.y])
         dist_p_to_me = np.linalg.norm(vec_p_to_me)
@@ -678,10 +673,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         r0_reward = 0.0
         r1_reward = 0.0
 
-        # ----------------------------------------------------
-        # 1. Eventos Terminais Globais (Gols e Saídas)
-        # ----------------------------------------------------
-        # Gol Marcado Válido (+50.0 Compartilhado)
+        # Eventos terminais globais (gols e saídas)
         if ball.x > half_len and abs(ball.y) < goal_w:
             goal_rw = 50.0
             shared_reward += goal_rw
@@ -690,7 +682,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             reward_dict = {a: shared_reward for a in self.agents}
             return reward_dict, done, False
 
-        # Gol Sofrido / Gol Contra (-20.0 compartilhado)
+        # Gol contra ou sofrido
         if ball.x < -half_len and abs(ball.y) < goal_w:
             shared_reward -= 20.0
             done = True
@@ -698,14 +690,14 @@ class SSLELMultiEnv(SSLBaseEnv):
             reward_dict = {a: shared_reward for a in self.agents}
             return reward_dict, done, False
 
-        # Conclusão de ataque pela Linha de Fundo Adversária (+0.5)
+        # Conclusão de ataque pela linha de fundo adversária
         if ball.x > half_len and abs(ball.y) >= goal_w:
             shared_reward += 0.5
             done = True
             reward_dict = {a: shared_reward for a in self.agents}
             return reward_dict, done, False
 
-        # Bola fora das laterais ou defesa (-2.0)
+        # Bola fora de campo
         if abs(ball.x) > (half_len + 0.10) or abs(ball.y) > (half_wid + 0.10):
             shared_reward -= 2.0
             done = True
@@ -713,9 +705,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             reward_dict = {a: shared_reward for a in self.agents}
             return reward_dict, done, False
 
-        # ----------------------------------------------------
-        # 2. Violação de Regras e Limites de Campo
-        # ----------------------------------------------------
+        # Violação de regras e limites de campo
         for i, robot in enumerate([r0, r1]):
             # Fora do campo
             if abs(robot.x) > (half_len + 0.05) or abs(robot.y) > (half_wid + 0.05):
@@ -735,18 +725,14 @@ class SSLELMultiEnv(SSLBaseEnv):
                 reward_dict = {a: shared_reward for a in self.agents}
                 return reward_dict, done, False
 
-        # ----------------------------------------------------
-        # 3. Penalidade de Anti-Colisão Suave entre Companheiros
-        # ----------------------------------------------------
+        # Penalidade de anti-colisão entre companheiros
         dist_teammates = float(np.linalg.norm([r0.x - r1.x, r0.y - r1.y]))
         if dist_teammates < 0.22:
             col_pen = -0.5 * ((0.22 - dist_teammates) / 0.22)
             shared_reward += col_pen
             self.reward_shaping_total["collision_teammates"] += col_pen
 
-        # ----------------------------------------------------
-        # 4. Detecção de Passe Conectado (+12.0 Compartilhado - Anti-Farming)
-        # ----------------------------------------------------
+        # Detecção de passe conectado
         if self.pass_in_progress and self.pass_origin_pos is not None:
             receiver = r1 if self.pass_sender == "blue_0" else r0
             d_recv = float(np.linalg.norm([receiver.x - ball.x, receiver.y - ball.y]))
@@ -760,9 +746,7 @@ class SSLELMultiEnv(SSLBaseEnv):
                 self.pass_sender = None
                 self.pass_origin_pos = None
 
-        # ----------------------------------------------------
-        # 5. Geometria Dinâmica dos Agentes e Alvos
-        # ----------------------------------------------------
+        # Geometria dinâmica dos agentes e alvos
         goal_target = np.array([half_len, 0.0])
         ball_pos = np.array([ball.x, ball.y])
         dist_b2g = float(np.linalg.norm(goal_target - ball_pos))
@@ -792,9 +776,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         cur_dist_target_0 = float(np.linalg.norm(target_0 - np.array([r0.x, r0.y])))
         cur_dist_target_1 = float(np.linalg.norm(target_1 - np.array([r1.x, r1.y])))
 
-        # ----------------------------------------------------
-        # 6. Finalização em Alta Velocidade no Alvo (+3.0 Evento)
-        # ----------------------------------------------------
+        # Finalização no alvo
         ball_vel = np.array([ball.v_x, ball.v_y])
         ball_v_to_goal = float(np.dot(ball_vel, dir_b2g))
         if ball.v_x > 1.0 and ball_v_to_goal > 0.8:
@@ -809,9 +791,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         elif ball.v_x < 0.4:
             self.shot_opp_active = False
 
-        # ----------------------------------------------------
-        # 7. Potenciais PBRS Limpos (Avanço da Bola, Movimentação e Alinhamento)
-        # ----------------------------------------------------
+        # Potenciais PBRS (avanço da bola, movimentação e alinhamento)
         if self.last_frame is not None:
             last_ball = self.last_frame.ball
             last_ball_pos = np.array([last_ball.x, last_ball.y])
@@ -885,9 +865,7 @@ class SSLELMultiEnv(SSLBaseEnv):
                 shared_reward += impulse_rw
                 self.reward_shaping_total["push_to_goal"] += impulse_rw
 
-        # ----------------------------------------------------
-        # 8. Sensor Infravermelho Frontal (+0.03 contínuo por controle da bola)
-        # ----------------------------------------------------
+        # Sensor infravermelho frontal
         for agent_name, robot in [("blue_0", r0), ("blue_1", r1)]:
             if robot.infrared:
                 infra_rw = 0.03
@@ -897,18 +875,14 @@ class SSLELMultiEnv(SSLBaseEnv):
                     r1_reward += infra_rw
                 self.reward_shaping_total["infrared"] += infra_rw
 
-        # ----------------------------------------------------
-        # 9. Barreira Repulsiva da Área Adversária (Buffer de 15cm)
-        # ----------------------------------------------------
-        penalty_line_x = half_len - self.field.penalty_length  # 1.75m
+        # Barreira repulsiva da área adversária (buffer de 15cm)
+        penalty_line_x = half_len - self.field.penalty_length
         for rbt in [r0, r1]:
             if rbt.x > (penalty_line_x - 0.15) and abs(rbt.y) < (self.field.penalty_width / 2 + 0.08):
                 dist_near = rbt.x - (penalty_line_x - 0.15)
                 shared_reward -= 0.20 * dist_near
 
-        # ----------------------------------------------------
-        # 10. Custo Suave de Tempo e Energia (-0.003 por passo)
-        # ----------------------------------------------------
+        # Custo de tempo e energia
         time_pen = -0.003
         r0_reward += time_pen
         r1_reward += time_pen

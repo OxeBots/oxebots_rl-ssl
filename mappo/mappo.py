@@ -108,7 +108,7 @@ class MAPPOTrainer:
                     b_advs,
                 ) = batch
 
-                # 1. Otimização do Crítico Centralizado
+                # Otimização do crítico centralizado
                 current_values = self.critic(b_states)
                 v_clipped = b_values + (current_values - b_values).clamp(-self.clip_param, self.clip_param)
                 vf_loss_1 = (current_values - b_returns).pow(2)
@@ -120,7 +120,7 @@ class MAPPOTrainer:
                 nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
                 self.critic_optimizer.step()
 
-                # 2. Otimização do Ator (ou Atores)
+                # Otimização do ator compartilhado ou individual
                 if self.use_shared_actor:
                     actor_loss_sum = 0.0
                     ent_sum = 0.0
