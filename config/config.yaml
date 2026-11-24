@@ -1,6 +1,7 @@
 # Configuração
 # Modo de treino: true para single-agent (SB3 PPO), false para multi-agent (MAPPO)
 mode_single: true
+role: "attacker"               # Papel do agente: "attacker" (padrão) | "goalkeeper" | papel customizado
 
 # Ambiente e atuadores
 environment:

@@ -30,6 +30,9 @@ def test_config_structure():
 
     assert "rewards" in cfg, "Seção 'rewards' ausente"
     for r_name, r_item in cfg["rewards"].items():
+        if r_name == "role":
+            assert isinstance(r_item, str)
+            continue
         assert isinstance(r_item, dict), f"Item {r_name} em rewards deve ser dicionário"
         assert "enabled" in r_item, f"Chave 'enabled' ausente em reward {r_name}"
         assert isinstance(r_item["enabled"], bool), f"'enabled' de {r_name} deve ser booleano"

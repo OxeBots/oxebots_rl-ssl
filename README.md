@@ -83,12 +83,15 @@ pip install pytest ruff
 
 O arquivo `config/config.yaml` controla todo o comportamento do framework:
 
-### Alternar Modo de Aprendizado
+### Alternar Modo de Aprendizado e Papel do Agente
 
 ```yaml
-# true: Atacante individual com Stable-Baselines3 PPO
-# false: Cooperação entre dois atacantes com MAPPO (CTDE)
+# true: Treino individual com Stable-Baselines3 PPO
+# false: Cooperação entre robôs com MAPPO (CTDE)
 mode_single: true
+
+# Papel do agente: "attacker" (padrão) | "goalkeeper" | papel customizado
+role: "attacker"
 ```
 
 ### Selecionar Tamanho do Campo (Entry Level vs Division B)
