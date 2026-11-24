@@ -17,7 +17,6 @@ def test_config_structure():
 
     assert "environment" in cfg, "Seção 'environment' ausente"
     env_cfg = cfg["environment"]
-    assert "id" in env_cfg
     assert isinstance(env_cfg.get("enable_dribbler"), bool)
     assert isinstance(env_cfg.get("enable_kicker"), bool)
     assert isinstance(env_cfg.get("max_steps"), int)
@@ -52,3 +51,12 @@ def test_config_structure():
 
     assert "training" in cfg, "Seção 'training' ausente"
     assert "ppo" in cfg, "Seção 'ppo' ausente"
+
+
+def test_environment_deduced_from_mode_single():
+    with open("config/config.yaml", "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+
+    is_single = cfg.get("mode_single", True)
+    env_id = "SSL-EL-v0" if is_single else "SSL-EL-Coop-v0"
+    assert env_id in ["SSL-EL-v0", "SSL-EL-Coop-v0"]

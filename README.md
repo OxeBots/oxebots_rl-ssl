@@ -95,7 +95,6 @@ mode_single: true
 
 ```yaml
 environment:
-  id: "SSL-EL-v0"
   max_steps: 600
   enable_dribbler: false
   enable_kicker: true

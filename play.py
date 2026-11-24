@@ -71,7 +71,9 @@ def main():
             config = yaml.safe_load(f)
 
     env_cfg = config.get("environment", {})
-    env_id = args.env or env_cfg.get("id", "SSL-EL-v0")
+    is_single = config.get("mode_single", True)
+    default_env_id = "SSL-EL-v0" if is_single else "SSL-EL-Coop-v0"
+    env_id = args.env or env_cfg.get("id") or default_env_id
     enable_dribbler = env_cfg.get("enable_dribbler", False)
     enable_kicker = env_cfg.get("enable_kicker", True)
     max_steps = env_cfg.get("max_steps", 600)

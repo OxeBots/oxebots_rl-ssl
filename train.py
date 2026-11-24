@@ -95,7 +95,7 @@ def train_single_agent(config: dict):
     train_cfg = config.get("training", {})
     ppo_cfg = config.get("ppo", {})
 
-    env_id = env_cfg.get("id", "SSL-EL-v0")
+    env_id = env_cfg.get("id") or "SSL-EL-v0"
     seed = train_cfg.get("seed", 42)
     n_envs = train_cfg.get("n_envs", 8)
     total_timesteps = train_cfg.get("total_timesteps", 5_000_000)

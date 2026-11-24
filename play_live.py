@@ -57,7 +57,9 @@ def main():
     mon_cfg = config.get("monitoring", {})
     train_cfg = config.get("training", {})
 
-    env_id = env_cfg.get("id", "SSL-EL-v0")
+    is_single = config.get("mode_single", True)
+    default_env_id = "SSL-EL-v0" if is_single else "SSL-EL-Coop-v0"
+    env_id = env_cfg.get("id") or default_env_id
     checkpoints_dir = mon_cfg.get("checkpoints_dir", "./logs/checkpoints_single/")
     final_model_path = train_cfg.get("final_model_path", None)
 

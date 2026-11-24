@@ -1,10 +1,9 @@
-# Configuração 
+# Configuração
 # Modo de treino: true para single-agent (SB3 PPO), false para multi-agent (MAPPO)
 mode_single: true
 
 # Ambiente e atuadores
 environment:
-  id: "SSL-EL-v0"              # Ambiente oficial SSL Entry Level (Campo 4.5m x 3.0m)
   max_steps: 600               # Duração máxima do episódio (15s @ 40Hz)
   
   # Atuadores físicos (Hardware):
