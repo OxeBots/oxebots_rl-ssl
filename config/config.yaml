@@ -15,6 +15,17 @@ environment:
   enable_dribbler: false       # true: ativa motor do drible | false: desativado (padrão SSL-EL)
   enable_kicker: true          # true: permite chutar a bola | false: sem chute (apenas condução)
 
+  # Dimensões e Presets do Campo (Entry Level vs Divisão B):
+  # Para mudar para a Divisão B, basta alterar preset para "division_b" (ou ajustar as medidas abaixo)
+  field:
+    preset: "entry"            # Opções: "entry" (4.5m x 3.0m) | "division_b" (9.0m x 6.0m) | "custom"
+    length: 4.5                # Comprimento do campo em metros (Entry: 4.5 | Divisão B: 9.0)
+    width: 3.0                 # Largura do campo em metros (Entry: 3.0 | Divisão B: 6.0)
+    penalty_length: 0.50       # Comprimento da área de pênalti em metros (Entry: 0.50 | Divisão B: 1.0)
+    penalty_width: 1.350       # Largura da área de pênalti em metros (Entry: 1.350 | Divisão B: 2.0)
+    goal_width: 0.70           # Largura do gol em metros (Entry: 0.70 | Divisão B: 1.0)
+    goal_depth: 0.18           # Profundidade do gol em metros (0.18)
+
 # --- RECOMPENSAS E PENALIDADES (Ative/Desative com Booleano e Ajuste o Valor) ---
 rewards:
   goal:

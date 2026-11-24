@@ -28,3 +28,16 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [
+    "rsoccer_gym/Entities",
+    "rsoccer_gym/ssl/ssl_hw_challenge",
+    "rsoccer_gym/vss",
+    "rsoccer_gym/Simulators",
+    "rsoccer_gym/Render",
+    "rsoccer_gym/Utils",
+    "rsoccer_gym/ssl/ssl_gym_base.py",
+]

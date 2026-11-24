@@ -63,3 +63,54 @@ def test_single_env_custom_reward_injection():
     env.reset(seed=42)
     assert env.unwrapped.reward_function is custom_reward
     env.close()
+
+
+def test_single_env_default_field_dimensions():
+    env = gym.make("SSL-EL-v0")
+    raw = env.unwrapped
+    assert raw.field.length == 4.5
+    assert raw.field.width == 3.0
+    assert raw.field.penalty_length == 0.50
+    assert raw.field.penalty_width == 1.350
+    assert raw.field.goal_width == 0.70
+    assert raw.field.goal_depth == 0.18
+    env.close()
+
+
+def test_single_env_division_b_preset():
+    env = gym.make("SSL-EL-v0", field_params={"preset": "division_b"})
+    raw = env.unwrapped
+    assert raw.field.length == 9.0
+    assert raw.field.width == 6.0
+    assert raw.field.penalty_length == 1.0
+    assert raw.field.penalty_width == 2.0
+    assert raw.field.goal_width == 1.0
+    assert raw.field.goal_depth == 0.18
+    obs, _ = env.reset(seed=42)
+    assert obs.shape == (49,)
+    env.close()
+
+
+def test_single_env_custom_dimensions():
+    env = gym.make(
+        "SSL-EL-v0",
+        field_params={
+            "preset": "custom",
+            "length": 5.0,
+            "width": 3.5,
+            "penalty_length": 0.60,
+            "penalty_width": 1.50,
+            "goal_width": 0.80,
+            "goal_depth": 0.20,
+        },
+    )
+    raw = env.unwrapped
+    assert raw.field.length == 5.0
+    assert raw.field.width == 3.5
+    assert raw.field.penalty_length == 0.60
+    assert raw.field.penalty_width == 1.50
+    assert raw.field.goal_width == 0.80
+    assert raw.field.goal_depth == 0.20
+    obs, _ = env.reset(seed=42)
+    assert obs.shape == (49,)
+    env.close()

@@ -40,3 +40,16 @@ def test_multi_env_step():
     assert isinstance(rewards, dict)
     assert "blue_0" in rewards and "blue_1" in rewards
     env.close()
+
+
+def test_multi_env_division_b_preset():
+    env = gym.make("SSL-EL-Coop-v0", field_params={"preset": "division_b"})
+    raw = env.unwrapped
+    assert raw.field.length == 9.0
+    assert raw.field.width == 6.0
+    assert raw.field.penalty_length == 1.0
+    assert raw.field.penalty_width == 2.0
+    obs_dict, _ = env.reset(seed=42)
+    assert obs_dict["blue_0"].shape == (35,)
+    assert obs_dict["blue_1"].shape == (35,)
+    env.close()

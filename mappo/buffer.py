@@ -1,4 +1,5 @@
-from typing import Generator, Dict, List
+from collections.abc import Generator
+
 import numpy as np
 import torch
 
@@ -13,7 +14,7 @@ class MultiAgentRolloutBuffer:
         self,
         num_steps: int,
         num_envs: int,
-        agents: List[str],
+        agents: list[str],
         obs_dim: int,
         state_dim: int,
         act_dim: int,
@@ -63,13 +64,13 @@ class MultiAgentRolloutBuffer:
 
     def insert(
         self,
-        obs_dict: Dict[str, np.ndarray],
+        obs_dict: dict[str, np.ndarray],
         state: np.ndarray,
-        actions_dict: Dict[str, torch.Tensor],
-        log_probs_dict: Dict[str, torch.Tensor],
+        actions_dict: dict[str, torch.Tensor],
+        log_probs_dict: dict[str, torch.Tensor],
         values: torch.Tensor,
-        rewards_dict: Dict[str, float],
-        dones_dict: Dict[str, bool],
+        rewards_dict: dict[str, float],
+        dones_dict: dict[str, bool],
     ):
         """Insere uma transição completa do rollout."""
         for a in self.agents:

@@ -1,10 +1,12 @@
-import torch
-import torch.nn as nn
-from torch.distributions import Normal
 import numpy as np
+import torch
+from torch import nn
+from torch.distributions import Normal
+
+SQRT2 = float(np.sqrt(2))
 
 
-def init_layer(layer, std=np.sqrt(2), bias_const=0.0):
+def init_layer(layer, std=SQRT2, bias_const=0.0):
     """Inicialização ortogonal dos pesos das camadas neurais."""
     if isinstance(layer, nn.Linear):
         nn.init.orthogonal_(layer.weight, std)

@@ -1,13 +1,11 @@
 import os
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
+from torch import nn, optim
 
-from mappo.models import ContinuousActor, CentralizedCritic, ActorONNXWrapper
 from mappo.buffer import MultiAgentRolloutBuffer
+from mappo.models import ActorONNXWrapper, CentralizedCritic, ContinuousActor
 
 
 class MAPPOTrainer:
@@ -22,7 +20,7 @@ class MAPPOTrainer:
 
     def __init__(
         self,
-        agents: List[str],
+        agents: list[str],
         obs_dim: int = 35,
         state_dim: int = 53,
         act_dim: int = 4,
@@ -65,7 +63,7 @@ class MAPPOTrainer:
         self.critic = CentralizedCritic(state_dim).to(device)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr_critic, eps=1e-5)
 
-    def get_actions(self, obs_dict: Dict[str, np.ndarray], deterministic: bool = False):
+    def get_actions(self, obs_dict: dict[str, np.ndarray], deterministic: bool = False):
         """Coleta ações descentralizadas para cada agente."""
         actions_dict = {}
         log_probs_dict = {}
@@ -89,7 +87,7 @@ class MAPPOTrainer:
             value = self.critic(state_t)
         return value
 
-    def train_step(self, buffer: MultiAgentRolloutBuffer) -> Dict[str, float]:
+    def train_step(self, buffer: MultiAgentRolloutBuffer) -> dict[str, float]:
         """Executa a atualização de parâmetros da política e do crítico centralizado."""
         total_actor_loss = 0.0
         total_critic_loss = 0.0
@@ -209,7 +207,7 @@ class MAPPOTrainer:
                 self.actors[a].to(self.device)
 
 
-    def save(self, filepath: str, extra_info: dict = None, export_onnx: bool = True):
+    def save(self, filepath: str, extra_info: dict | None = None, export_onnx: bool = True):
         """
         Salva o checkpoint em formato PyTorch (.pt) com pesos e estado dos otimizadores
         e exporta simultaneamente o modelo em formato ONNX (.onnx).
@@ -246,7 +244,7 @@ class MAPPOTrainer:
             onnx_path = pt_path[:-3] + ".onnx"
             try:
                 self.export_onnx(onnx_path)
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError) as e:
                 print(f"[!] Aviso: Falha ao exportar ONNX ({e})")
 
     def load(self, filepath: str, load_optimizers: bool = True) -> dict:
@@ -260,7 +258,7 @@ class MAPPOTrainer:
         if load_optimizers and "critic_optimizer" in checkpoint:
             try:
                 self.critic_optimizer.load_state_dict(checkpoint["critic_optimizer"])
-            except Exception:
+            except (RuntimeError, KeyError):
                 pass
 
         # Restaurar Ator
@@ -269,7 +267,7 @@ class MAPPOTrainer:
             if load_optimizers and "actor_optimizer" in checkpoint:
                 try:
                     self.actor_optimizer.load_state_dict(checkpoint["actor_optimizer"])
-                except Exception:
+                except (RuntimeError, KeyError):
                     pass
         else:
             for a in self.agents:
@@ -277,7 +275,116 @@ class MAPPOTrainer:
                 if load_optimizers and "actor_optimizers" in checkpoint:
                     try:
                         self.actor_optimizers[a].load_state_dict(checkpoint["actor_optimizers"][a])
-                    except Exception:
+                    except (RuntimeError, KeyError):
                         pass
 
         return checkpoint
+
+
+def train_mappo(config: dict):
+    """Pipeline de treinamento Multi-Agent (MAPPO com CTDE)."""
+    import gymnasium as gym
+
+    import rsoccer_gym  # noqa: F401
+
+    env_cfg = config.get("environment", {})
+    mon_cfg = config.get("monitoring", {})
+    train_cfg = config.get("training", {})
+    mappo_cfg = config.get("mappo", {})
+
+    field_params = env_cfg.get("field", {})
+    env = gym.make("SSL-EL-Coop-v0", field_params=field_params)
+
+    agents = env.unwrapped.agents
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    trainer = MAPPOTrainer(
+        agents=agents,
+        obs_dim=35,
+        state_dim=53,
+        act_dim=4,
+        lr_actor=mappo_cfg.get("lr_actor", 3e-4),
+        lr_critic=mappo_cfg.get("lr_critic", 1e-3),
+        clip_param=mappo_cfg.get("clip_param", 0.2),
+        value_loss_coef=mappo_cfg.get("value_loss_coef", 0.5),
+        entropy_coef=mappo_cfg.get("entropy_coef", 0.001),
+        max_grad_norm=mappo_cfg.get("max_grad_norm", 0.5),
+        ppo_epochs=mappo_cfg.get("ppo_epochs", 5),
+        batch_size=mappo_cfg.get("batch_size", 128),
+        use_shared_actor=mappo_cfg.get("use_shared_actor", True),
+        device=device,
+    )
+
+    num_steps = mappo_cfg.get("buffer_size", 2048)
+    buffer = MultiAgentRolloutBuffer(
+        num_steps=num_steps,
+        num_envs=1,
+        agents=agents,
+        obs_dim=35,
+        state_dim=53,
+        act_dim=4,
+        gamma=mappo_cfg.get("gamma", 0.99),
+        gae_lambda=mappo_cfg.get("gae_lambda", 0.95),
+        device=device,
+    )
+
+    total_timesteps = train_cfg.get("total_timesteps", 1_000_000)
+    checkpoints_dir = mon_cfg.get("checkpoints_dir", "./logs/checkpoints_multi/")
+    final_model_path = train_cfg.get("final_model_path", "./modelos/ssl_el_coop_mappo_final")
+
+    os.makedirs(checkpoints_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(final_model_path) or ".", exist_ok=True)
+
+    print(f"[INFO] MAPPO configurado para {len(agents)} agentes no dispositivo: {device.upper()}")
+    print(f"[INFO] Treinamento configurado para {total_timesteps:,} passos.")
+
+    obs_dict, _ = env.reset(seed=train_cfg.get("seed", 42))
+    step_count = 0
+    save_freq = train_cfg.get("checkpoint_freq", 50000)
+
+    try:
+        while step_count < total_timesteps:
+            for _ in range(num_steps):
+                state = env.unwrapped._get_global_state() if hasattr(env.unwrapped, "_get_global_state") else np.zeros(53, dtype=np.float32)
+                actions_dict, log_probs_dict = trainer.get_actions(obs_dict, deterministic=False)
+                value = trainer.get_value(state)
+
+                np_actions = {a: actions_dict[a].cpu().numpy().squeeze(0) for a in agents}
+                next_obs, rewards, dones, truncs, _ = env.step(np_actions)
+                step_count += 1
+
+                buffer.insert(
+                    obs_dict=obs_dict,
+                    state=state,
+                    actions_dict=actions_dict,
+                    log_probs_dict=log_probs_dict,
+                    values=value,
+                    rewards_dict=rewards,
+                    dones_dict=dones,
+                )
+
+                obs_dict = next_obs
+                done_any = any(dones.values()) if isinstance(dones, dict) else bool(dones)
+                trunc_any = any(truncs.values()) if isinstance(truncs, dict) else bool(truncs)
+
+                if done_any or trunc_any:
+                    obs_dict, _ = env.reset()
+
+                if step_count >= total_timesteps:
+                    break
+
+            final_state = env.unwrapped._get_global_state() if hasattr(env.unwrapped, "_get_global_state") else np.zeros(53, dtype=np.float32)
+            next_val = trainer.get_value(final_state)
+            buffer.compute_gae(next_value=next_val, next_done=torch.zeros((1, 1), device=device))
+            trainer.train_step(buffer)
+
+            if step_count % save_freq == 0:
+                ckpt_path = os.path.join(checkpoints_dir, f"mappo_step_{step_count}.pt")
+                trainer.save(ckpt_path)
+                print(f"[OK] Checkpoint MAPPO salvo em: {ckpt_path} (Passo {step_count:,})")
+
+        trainer.save(final_model_path)
+        print("\n[OK] Treinamento MAPPO concluído com sucesso!")
+        print(f"[INFO] Modelo final salvo em: {final_model_path}.pt / .onnx")
+    finally:
+        env.close()

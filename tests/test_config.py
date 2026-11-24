@@ -22,6 +22,13 @@ def test_config_structure():
     assert isinstance(env_cfg.get("enable_kicker"), bool)
     assert isinstance(env_cfg.get("max_steps"), int)
 
+    assert "field" in env_cfg, "Seção 'environment.field' ausente"
+    field_cfg = env_cfg["field"]
+    assert "preset" in field_cfg, "Chave 'preset' ausente no campo"
+    for dim in ["length", "width", "penalty_length", "penalty_width", "goal_width", "goal_depth"]:
+        assert dim in field_cfg, f"Dimensão '{dim}' ausente no campo"
+        assert isinstance(field_cfg[dim], (int, float)), f"Dimensão '{dim}' deve ser numérica"
+
     assert "rewards" in cfg, "Seção 'rewards' ausente"
     for r_name, r_item in cfg["rewards"].items():
         assert isinstance(r_item, dict), f"Item {r_name} em rewards deve ser dicionário"

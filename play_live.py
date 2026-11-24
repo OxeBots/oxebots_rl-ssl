@@ -69,6 +69,7 @@ def main():
     print("=" * 65)
 
     reward_fn = get_reward_function(config)
+    field_params = env_cfg.get("field", {})
 
     # 1. Criação do ambiente com renderização gráfica 2D
     try:
@@ -79,6 +80,7 @@ def main():
             enable_dribbler=env_cfg.get("enable_dribbler", False),
             enable_kicker=env_cfg.get("enable_kicker", True),
             max_steps=env_cfg.get("max_steps", 600),
+            field_params=field_params,
         )
     except TypeError:
         env = gym.make(env_id, render_mode="human")

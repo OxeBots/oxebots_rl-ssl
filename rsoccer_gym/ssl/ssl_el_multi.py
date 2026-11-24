@@ -1,29 +1,13 @@
 import math
 import random
-from typing import Dict, List, Tuple, Any
+from typing import ClassVar
 
 import gymnasium as gym
 import numpy as np
-import pygame
 
-from rsoccer_gym.Entities import Frame, Robot, Ball, Field
-from rsoccer_gym.Render.field import VSSRenderField
-from rsoccer_gym.Render.utils import COLORS
+from rsoccer_gym.Entities import Ball, Frame, Robot
+from rsoccer_gym.ssl.ssl_el import SSLELRenderField, get_field_configuration
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
-
-
-class SSLELRenderField(VSSRenderField):
-    """Renderizador gráfico para o campo SSL Entry Level (4.5m x 3.0m)."""
-    length = 4.5
-    width = 3.0
-    margin = 0.3
-    center_circle_r = 0.5
-    penalty_length = 0.50
-    penalty_width = 1.350
-    goal_width = 0.70
-    goal_depth = 0.18
-    _scale = 180
-
 
 
 class SSLELMultiEnv(SSLBaseEnv):
@@ -31,9 +15,9 @@ class SSLELMultiEnv(SSLBaseEnv):
     Ambiente Multi-Agente SSL Entry Level (SSL-EL) para Cooperação de Atacantes (2 Atacantes Azuis vs Defesa):
     
     Características:
-    - Campo SSL-EL oficial: 4.5m x 3.0m
-    - Área de pênalti: 1.350m (Y) x 0.50m (X)
-    - Gol: 0.70m x 0.18m
+    - Campo SSL: 4.5m x 3.0m (Entry Level) ou 9.0m x 6.0m (Division B)
+    - Área de pênalti: 1.350m x 0.50m (Entry) ou 2.0m x 1.0m (Division B)
+    - Gol: 0.70m x 0.18m (Entry) ou 1.0m x 0.18m (Division B)
     - Robôs: 3 Azuis vs 3 Amarelos
     - Agentes Ativos Cooperativos:
         * blue_0: Robô Azul 0 (Passador / Atacante 1)
@@ -44,25 +28,27 @@ class SSLELMultiEnv(SSLBaseEnv):
     - Suporte nativo a CTDE (Treinamento Centralizado, Execução Descentralizada) para MAPPO.
     """
 
-    agents = ["blue_0", "blue_1"]
-    possible_agents = ["blue_0", "blue_1"]
+    agents: ClassVar[list[str]] = ["blue_0", "blue_1"]
+    possible_agents: ClassVar[list[str]] = ["blue_0", "blue_1"]
 
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, field_params=None):
+        self.field_config = get_field_configuration(field_params)
+
         super().__init__(
-            field_type=2,
+            field_type=self.field_config["field_type"],
             n_robots_blue=3,
             n_robots_yellow=3,
             time_step=0.025,
             render_mode=render_mode,
         )
 
-        # Ajuste dimensional exato para a SSL-EL
-        self.field.length = 4.5
-        self.field.width = 3.0
-        self.field.penalty_width = 1.350  # comprimento no eixo Y
-        self.field.penalty_length = 0.50  # largura no eixo X
-        self.field.goal_width = 0.70
-        self.field.goal_depth = 0.18
+        # Ajuste dimensional dinâmico para SSL (Entry Level ou Division B)
+        self.field.length = self.field_config["length"]
+        self.field.width = self.field_config["width"]
+        self.field.penalty_width = self.field_config["penalty_width"]
+        self.field.penalty_length = self.field_config["penalty_length"]
+        self.field.goal_width = self.field_config["goal_width"]
+        self.field.goal_depth = self.field_config["goal_depth"]
 
         # Normalização de posições
         self.max_pos = max(
@@ -70,7 +56,14 @@ class SSLELMultiEnv(SSLBaseEnv):
         )
 
         # Renderizador gráfico
-        self.field_renderer = SSLELRenderField()
+        self.field_renderer = SSLELRenderField(
+            length=self.field.length,
+            width=self.field.width,
+            penalty_length=self.field.penalty_length,
+            penalty_width=self.field.penalty_width,
+            goal_width=self.field.goal_width,
+            goal_depth=self.field.goal_depth,
+        )
         self.window_size = self.field_renderer.window_size
 
         # Espaço de Ação por Agente: [v_x, v_y, v_theta, kick_x]
@@ -159,7 +152,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         info_dict = {agent: {} for agent in self.agents}
         return obs_dict, info_dict
 
-    def step(self, action_dict: Dict[str, np.ndarray]):
+    def step(self, action_dict: dict[str, np.ndarray]):
         self.steps += 1
 
         # Tratar compatibilidade caso receba array único ou dicionário
@@ -171,7 +164,7 @@ class SSLELMultiEnv(SSLBaseEnv):
             actions = action_dict
 
         # Converter ações dos agentes para comandos do simulador
-        commands: List[Robot] = self._get_multi_agent_commands(actions)
+        commands: list[Robot] = self._get_multi_agent_commands(actions)
         self.rsim.send_commands(commands)
         self.sent_commands = commands
 
@@ -270,7 +263,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         half_wid = (self.field.width / 2) - 0.25
 
         # Bola no lado esquerdo / intermediária
-        ball_x = random.uniform(-0.8, 0.2)
+        ball_x = random.uniform(-0.18 * self.field.length, 0.05 * self.field.length)
         ball_y = random.uniform(-half_wid * 0.6, half_wid * 0.6)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
@@ -286,7 +279,7 @@ class SSLELMultiEnv(SSLBaseEnv):
 
         # Robô Azul 1 (Receptor / Atacante 2) posicionado no flanco ofensivo oposto
         sign_y = -1.0 if ball_y >= 0 else 1.0
-        b1_x = random.uniform(0.0, 1.2)
+        b1_x = random.uniform(0.0, 0.27 * self.field.length)
         b1_y = sign_y * random.uniform(0.4, half_wid * 0.85)
         target_goal_angle = np.rad2deg(math.atan2(-b1_y, (self.field.length / 2) - b1_x))
         frame.robots_blue[1] = Robot(
@@ -296,15 +289,19 @@ class SSLELMultiEnv(SSLBaseEnv):
         )
 
         # Robô Azul 2 (Apoio estático na defesa)
-        frame.robots_blue[2] = Robot(x=-1.50, y=0.0, theta=0.0)
+        frame.robots_blue[2] = Robot(x=-0.33 * self.field.length, y=0.0, theta=0.0)
 
         # Goleiro Amarelo 0 (na linha do gol)
         gk_x = (self.field.length / 2) - 0.12
         frame.robots_yellow[0] = Robot(x=gk_x, y=random.uniform(-0.25, 0.25), theta=180.0)
 
         # Defensores Amarelos 1 e 2 (em marcação posicional)
-        frame.robots_yellow[1] = Robot(x=0.80, y=0.65, theta=180.0)
-        frame.robots_yellow[2] = Robot(x=0.80, y=-0.65, theta=180.0)
+        frame.robots_yellow[1] = Robot(
+            x=0.18 * self.field.length, y=0.22 * self.field.width, theta=180.0
+        )
+        frame.robots_yellow[2] = Robot(
+            x=0.18 * self.field.length, y=-0.22 * self.field.width, theta=180.0
+        )
 
         return frame
 
@@ -325,7 +322,7 @@ class SSLELMultiEnv(SSLBaseEnv):
 
         return v_x_local, v_y_local, v_theta
 
-    def _get_multi_agent_commands(self, actions_dict: Dict[str, np.ndarray]) -> List[Robot]:
+    def _get_multi_agent_commands(self, actions_dict: dict[str, np.ndarray]) -> list[Robot]:
         """Gera a lista de comandos para os 6 robôs do simulador."""
         commands = []
 
@@ -494,7 +491,7 @@ class SSLELMultiEnv(SSLBaseEnv):
         in_y = abs(y) < half_pen_w
         return in_x and in_y
 
-    def _update_pass_tracker(self, actions_dict: Dict[str, np.ndarray]):
+    def _update_pass_tracker(self, actions_dict: dict[str, np.ndarray]):
         """Rastreia dinâmica de passes entre os dois robôs atacantes azuis (anti-farming com distância mínima)."""
         ball = self.frame.ball
         r0 = self.frame.robots_blue[0]
@@ -629,11 +626,11 @@ class SSLELMultiEnv(SSLBaseEnv):
 
         return np.array(obs, dtype=np.float32)
 
-    def _get_all_agent_observations(self) -> Dict[str, np.ndarray]:
+    def _get_all_agent_observations(self) -> dict[str, np.ndarray]:
         """Retorna observações descentralizadas para todos os agentes."""
         return {agent: self._get_agent_observation(agent) for agent in self.agents}
 
-    def _calculate_multi_agent_reward_and_done(self) -> Tuple[Dict[str, float], bool, bool]:
+    def _calculate_multi_agent_reward_and_done(self) -> tuple[dict[str, float], bool, bool]:
         """
         FUNÇÃO DE RECOMPENSA COOPERATIVA ROBUSTA, ANTI-FARMING E BASEADA EM POTENCIAL (PBRS):
         - Gol Marcado: +50.0 compartilhado (objetivo primário).

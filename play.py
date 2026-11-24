@@ -83,6 +83,7 @@ def main():
     print("=" * 65)
 
     reward_fn = get_reward_function(config)
+    field_params = env_cfg.get("field", {})
 
     # Criação do ambiente com renderização gráfica 2D
     try:
@@ -93,6 +94,7 @@ def main():
             enable_dribbler=enable_dribbler,
             enable_kicker=enable_kicker,
             max_steps=max_steps,
+            field_params=field_params,
         )
     except TypeError:
         # Fallback caso o ambiente não suporte kwargs adicionais

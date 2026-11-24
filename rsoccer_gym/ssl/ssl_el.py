@@ -9,25 +9,89 @@ from rsoccer_gym.Entities import Ball, Frame, Robot
 from rsoccer_gym.Render.field import VSSRenderField
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 
+FIELD_PRESETS = {
+    "entry": {
+        "field_type": 2,
+        "length": 4.5,
+        "width": 3.0,
+        "penalty_length": 0.50,
+        "penalty_width": 1.350,
+        "goal_width": 0.70,
+        "goal_depth": 0.18,
+    },
+    "division_b": {
+        "field_type": 1,
+        "length": 9.0,
+        "width": 6.0,
+        "penalty_length": 1.0,
+        "penalty_width": 2.0,
+        "goal_width": 1.0,
+        "goal_depth": 0.18,
+    },
+    "regular": {
+        "field_type": 1,
+        "length": 9.0,
+        "width": 6.0,
+        "penalty_length": 1.0,
+        "penalty_width": 2.0,
+        "goal_width": 1.0,
+        "goal_depth": 0.18,
+    },
+}
+
+
+def get_field_configuration(field_params: dict | None = None) -> dict:
+    """Resolve preset de campo e aplica sobrescritas dimensionais personalizadas."""
+    cfg = dict(field_params or {})
+    preset_name = str(cfg.get("preset", "entry")).lower()
+    base = dict(FIELD_PRESETS.get(preset_name, FIELD_PRESETS["entry"]))
+
+    for key in [
+        "field_type",
+        "length",
+        "width",
+        "penalty_length",
+        "penalty_width",
+        "goal_width",
+        "goal_depth",
+    ]:
+        if key in cfg and cfg[key] is not None:
+            base[key] = float(cfg[key]) if key != "field_type" else int(cfg[key])
+
+    return base
+
 
 class SSLELRenderField(VSSRenderField):
-    """Renderizador gráfico para o campo oficial da SSL Entry Level (4.5m x 3.0m)."""
-    length = 4.5
-    width = 3.0
-    margin = 0.3
-    center_circle_r = 0.5
-    penalty_length = 0.50
-    penalty_width = 1.350
-    goal_width = 0.70
-    goal_depth = 0.18
-    _scale = 180
+    """Renderizador gráfico adaptável para os campos SSL Entry Level (4.5x3m) e Division B (9x6m)."""
+
+    def __init__(
+        self,
+        length: float = 4.5,
+        width: float = 3.0,
+        penalty_length: float = 0.50,
+        penalty_width: float = 1.350,
+        goal_width: float = 0.70,
+        goal_depth: float = 0.18,
+        margin: float = 0.3,
+        scale: float | None = None,
+    ):
+        self.length = length
+        self.width = width
+        self.penalty_length = penalty_length
+        self.penalty_width = penalty_width
+        self.goal_width = goal_width
+        self.goal_depth = goal_depth
+        self.margin = margin
+        self.center_circle_r = 0.5 if length <= 6.0 else 1.0
+        self._scale = scale if scale is not None else (180 if length <= 6.0 else 100)
+        super().__init__()
 
 
 class SSLELEnv(SSLBaseEnv):
     """
     Ambiente Base SSL Entry Level (SSL-EL) 3v3 - OxeBots RL-SSL:
-    - Campo: 4.5m x 3.0m
-    - Área de Pênalti: 1.350m (eixo Y) x 0.50m (eixo X)
+    - Campo Padrão: 4.5m x 3.0m (ou 9.0m x 6.0m para Division B / Regular)
+    - Área de Pênalti: 1.350m x 0.50m (ou 2.0m x 1.0m para Division B)
     - Robôs: 3 Azuis vs 3 Amarelos
     - Agente Controlado: Robô Azul 0
     - Ações Contínuas (4): [v_x, v_y, v_theta, kick_x]
@@ -42,29 +106,39 @@ class SSLELEnv(SSLBaseEnv):
         enable_dribbler=False,
         enable_kicker=True,
         max_steps=600,
+        field_params=None,
     ):
+        self.field_config = get_field_configuration(field_params)
+
         super().__init__(
-            field_type=2,
+            field_type=self.field_config["field_type"],
             n_robots_blue=3,
             n_robots_yellow=3,
             time_step=0.025,
             render_mode=render_mode,
         )
 
-        # Ajuste de dimensões oficiais SSL-EL
-        self.field.length = 4.5
-        self.field.width = 3.0
-        self.field.penalty_width = 1.350
-        self.field.penalty_length = 0.50
-        self.field.goal_width = 0.70
-        self.field.goal_depth = 0.18
+        # Ajuste de dimensões dinâmicas do campo
+        self.field.length = self.field_config["length"]
+        self.field.width = self.field_config["width"]
+        self.field.penalty_width = self.field_config["penalty_width"]
+        self.field.penalty_length = self.field_config["penalty_length"]
+        self.field.goal_width = self.field_config["goal_width"]
+        self.field.goal_depth = self.field_config["goal_depth"]
 
         self.max_pos = max(
             self.field.width / 2, (self.field.length / 2) + self.field.penalty_length
         )
 
-        # Renderizador 2D Pygame
-        self.field_renderer = SSLELRenderField()
+        # Renderizador 2D Pygame adaptado dinamicamente
+        self.field_renderer = SSLELRenderField(
+            length=self.field.length,
+            width=self.field.width,
+            penalty_length=self.field.penalty_length,
+            penalty_width=self.field.penalty_width,
+            goal_width=self.field.goal_width,
+            goal_depth=self.field.goal_depth,
+        )
         self.window_size = self.field_renderer.window_size
 
         # Espaço de Ação: [v_x, v_y, v_theta, kick_x]
@@ -158,8 +232,8 @@ class SSLELEnv(SSLBaseEnv):
         half_len = (self.field.length / 2) - 0.25
         half_wid = (self.field.width / 2) - 0.25
 
-        # Bola: posicionada aleatoriamente na região central/intermediária
-        ball_x = random.uniform(-0.5, 0.6)
+        # Bola: posicionada aleatoriamente na região intermediária
+        ball_x = random.uniform(-0.12 * self.field.length, 0.15 * self.field.length)
         ball_y = random.uniform(-half_wid * 0.7, half_wid * 0.7)
         frame.ball = Ball(x=ball_x, y=ball_y)
 
@@ -171,16 +245,24 @@ class SSLELEnv(SSLBaseEnv):
         )
 
         # Companheiros Azuis (IDs 1 e 2): posições de apoio
-        frame.robots_blue[1] = Robot(x=-1.20, y=0.75, theta=0.0)
-        frame.robots_blue[2] = Robot(x=-1.20, y=-0.75, theta=0.0)
+        frame.robots_blue[1] = Robot(
+            x=-0.27 * self.field.length, y=0.25 * self.field.width, theta=0.0
+        )
+        frame.robots_blue[2] = Robot(
+            x=-0.27 * self.field.length, y=-0.25 * self.field.width, theta=0.0
+        )
 
         # Goleiro Amarelo (ID 0): na linha da meta adversária
         gk_x = (self.field.length / 2) - 0.12
         frame.robots_yellow[0] = Robot(x=gk_x, y=0.0, theta=180.0)
 
         # Defensores Amarelos (IDs 1 e 2): posições defensivas
-        frame.robots_yellow[1] = Robot(x=0.90, y=0.70, theta=180.0)
-        frame.robots_yellow[2] = Robot(x=0.90, y=-0.70, theta=180.0)
+        frame.robots_yellow[1] = Robot(
+            x=0.20 * self.field.length, y=0.23 * self.field.width, theta=180.0
+        )
+        frame.robots_yellow[2] = Robot(
+            x=0.20 * self.field.length, y=-0.23 * self.field.width, theta=180.0
+        )
 
         return frame
 

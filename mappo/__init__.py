@@ -1,5 +1,12 @@
-from mappo.models import ContinuousActor, CentralizedCritic, ActorONNXWrapper
 from mappo.buffer import MultiAgentRolloutBuffer
-from mappo.mappo import MAPPOTrainer
+from mappo.mappo import MAPPOTrainer, train_mappo
+from mappo.models import ActorONNXWrapper, CentralizedCritic, ContinuousActor
 
-__all__ = ["ContinuousActor", "CentralizedCritic", "ActorONNXWrapper", "MultiAgentRolloutBuffer", "MAPPOTrainer"]
+__all__ = [
+    "ActorONNXWrapper",
+    "CentralizedCritic",
+    "ContinuousActor",
+    "MAPPOTrainer",
+    "MultiAgentRolloutBuffer",
+    "train_mappo",
+]
