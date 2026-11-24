@@ -1,11 +1,10 @@
-import os
 import json
-import numpy as np
-import torch
-import pytest
-from stable_baselines3 import PPO
+import os
 
-from export import export_model, OnnxablePolicy
+import numpy as np
+import pytest
+
+from export import export_model
 
 
 def test_onnx_export_and_numerical_parity(tmp_path):

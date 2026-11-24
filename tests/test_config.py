@@ -1,6 +1,6 @@
 import os
+
 import yaml
-import pytest
 
 
 def test_config_file_exists():

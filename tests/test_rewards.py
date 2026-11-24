@@ -1,5 +1,4 @@
-import pytest
-from rewards import get_reward_function, SingleAgentReward, MultiAgentReward
+from rewards import MultiAgentReward, SingleAgentReward, get_reward_function
 from rewards.base_reward import BaseReward
 
 

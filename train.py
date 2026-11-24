@@ -1,3 +1,5 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 """
 Treinador Universal OxeBots RL-SSL
 Controlado 100% via arquivo YAML (Single-Agent SB3 PPO ou Multi-Agent MAPPO).
@@ -6,9 +8,7 @@ Controlado 100% via arquivo YAML (Single-Agent SB3 PPO ou Multi-Agent MAPPO).
 import argparse
 import glob
 import os
-import random
-import sys
-import numpy as np
+
 import torch
 import yaml
 
@@ -26,8 +26,8 @@ def load_yaml_config(config_path: str) -> dict:
 def export_to_onnx(model, save_path: str, n_obs: int = 49):
     """Exporta a política treinada do PPO para o formato ONNX."""
     try:
-        import torch.nn as nn
         import onnx
+        from torch import nn
 
         class OnnxablePolicy(nn.Module):
             def __init__(self, policy):
@@ -59,14 +59,13 @@ def export_to_onnx(model, save_path: str, n_obs: int = 49):
             os.remove(data_file)
 
         print(f"📦 [ONNX] Modelo exportado com sucesso em: {save_path}")
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         print(f"⚠️ [ONNX] Aviso: Falha na exportação automática para ONNX: {e}")
 
 
 def make_single_env(env_id: str, config: dict, rank: int, seed: int = 42):
     """Fábrica de ambientes isolada para cada processo com injeção de recompensa."""
     def _init():
-        import rsoccer_gym
         import gymnasium as gym
 
         env_cfg = config.get("environment", {})
@@ -88,7 +87,7 @@ def train_single_agent(config: dict):
     """Pipeline de treinamento para agente único utilizando Stable-Baselines3 PPO."""
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import CheckpointCallback
-    from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+    from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
     env_cfg = config.get("environment", {})
     mon_cfg = config.get("monitoring", {})
@@ -204,7 +203,7 @@ def train_single_agent(config: dict):
 
     # Salva o modelo final
     model.save(final_model_path)
-    print(f"\n✅ Treinamento concluído com sucesso!")
+    print("\n✅ Treinamento concluído com sucesso!")
     print(f"💾 Modelo final salvo em: {final_model_zip}")
 
     # Exportação para ONNX
@@ -218,8 +217,6 @@ def train_single_agent(config: dict):
 
 def train_multi_agent(config: dict):
     """Pipeline de treinamento Multi-Agent (MAPPO com CTDE)."""
-    import rsoccer_gym
-    import gymnasium as gym
     from mappo.mappo import train_mappo
 
     print("=" * 70)

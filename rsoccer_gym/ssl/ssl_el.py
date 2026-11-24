@@ -1,14 +1,12 @@
-import math
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 import random
-from typing import Dict, Tuple, Optional
 
 import gymnasium as gym
 import numpy as np
-import pygame
 
-from rsoccer_gym.Entities import Frame, Robot, Ball, Field
+from rsoccer_gym.Entities import Ball, Frame, Robot
 from rsoccer_gym.Render.field import VSSRenderField
-from rsoccer_gym.Render.utils import COLORS
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 
 
@@ -259,7 +257,7 @@ class SSLELEnv(SSLBaseEnv):
 
         return commands
 
-    def _calculate_reward_and_done(self) -> Tuple[float, bool]:
+    def _calculate_reward_and_done(self) -> tuple[float, bool]:
         """Calcula recompensa e encerramento delegando 100% para o módulo em rewards/."""
         if self.reward_function is not None:
             reward, done, info = self.reward_function.calculate(

@@ -1,6 +1,10 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 import math
+from typing import Any
+
 import numpy as np
-from typing import Dict, Tuple, Any, Optional
+
 from rewards.base_reward import BaseReward
 
 
@@ -11,7 +15,7 @@ class SingleAgentReward(BaseReward):
     leitura direta dos booleanos e valores do YAML.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.shot_opp_active = False
         self.shot_own_active = False
@@ -22,7 +26,7 @@ class SingleAgentReward(BaseReward):
 
     def calculate(
         self, env, action, last_frame, frame, sent_commands
-    ) -> Tuple[float, bool, Dict[str, float]]:
+    ) -> tuple[float, bool, dict[str, float]]:
         reward = 0.0
         done = False
 

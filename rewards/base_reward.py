@@ -1,5 +1,7 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Any, Optional
+from typing import Any
 
 
 class BaseReward(ABC):
@@ -8,7 +10,7 @@ class BaseReward(ABC):
     Desacopla a simulação física da lógica de aprendizado por reforço.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self.rewards_cfg = self.config.get("rewards", {})
         self.penalties_cfg = self.config.get("penalties", {})
@@ -38,7 +40,7 @@ class BaseReward(ABC):
     @abstractmethod
     def calculate(
         self, env, action, last_frame, frame, sent_commands
-    ) -> Tuple[float, bool, Dict[str, float]]:
+    ) -> tuple[float, bool, dict[str, float]]:
         """
         Calcula a recompensa e condição de término para o passo atual.
         
@@ -47,8 +49,6 @@ class BaseReward(ABC):
             done (bool): Se o episódio terminou (gol, falta, saída).
             info (dict): Dicionário detalhado com cada parcela para o TensorBoard.
         """
-        pass
 
     def reset(self):
         """Reseta variáveis internas de potencial e rastreamento a cada episódio."""
-        pass

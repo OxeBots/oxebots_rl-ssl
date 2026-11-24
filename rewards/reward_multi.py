@@ -1,6 +1,9 @@
-import math
+from typing import Any
+
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 import numpy as np
-from typing import Dict, Tuple, Any, Optional
+
 from rewards.base_reward import BaseReward
 
 
@@ -10,7 +13,7 @@ class MultiAgentReward(BaseReward):
     Incentiva troca de passes, desmarcação do atacante sem bola e finalização coordenada.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.last_passer_id = None
 
@@ -19,7 +22,7 @@ class MultiAgentReward(BaseReward):
 
     def calculate(
         self, env, action, last_frame, frame, sent_commands
-    ) -> Tuple[float, bool, Dict[str, float]]:
+    ) -> tuple[float, bool, dict[str, float]]:
         reward = 0.0
         done = False
 
@@ -94,16 +97,13 @@ class MultiAgentReward(BaseReward):
             info["ball_grad"] += r_b2g
 
         # 6. Bônus de Passe Concluído
-        if self.is_enabled("rewards", "pass_completed"):
-            # Detecta se a bola estava com blue_0 e agora foi recebida por blue_1 (ou vice-versa)
-            if last_frame.robots_blue[0].infrared and blue_1.infrared:
-                pass_val = self.get_reward_val("pass_completed", 15.0)
-                reward += pass_val
-                info["pass_completed"] += pass_val
-            elif last_frame.robots_blue[1].infrared and blue_0.infrared:
-                pass_val = self.get_reward_val("pass_completed", 15.0)
-                reward += pass_val
-                info["pass_completed"] += pass_val
+        if self.is_enabled("rewards", "pass_completed") and (
+            (last_frame.robots_blue[0].infrared and blue_1.infrared)
+            or (last_frame.robots_blue[1].infrared and blue_0.infrared)
+        ):
+            pass_val = self.get_reward_val("pass_completed", 15.0)
+            reward += pass_val
+            info["pass_completed"] += pass_val
 
         # 7. Custo de Tempo
         if self.is_enabled("penalties", "time_cost"):

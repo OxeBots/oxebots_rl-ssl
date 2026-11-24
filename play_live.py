@@ -1,3 +1,5 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 """
 Monitor de Treinamento em Tempo Real (Live Player) - OxeBots RL-SSL
 Generalizado para qualquer configuração YAML:
@@ -8,15 +10,15 @@ import argparse
 import glob
 import os
 import time
+
 import gymnasium as gym
 import yaml
 from stable_baselines3 import PPO
 
-import rsoccer_gym
 from rewards import get_reward_function
 
 
-def get_latest_checkpoint(checkpoints_dir: str, final_model_path: str = None) -> str:
+def get_latest_checkpoint(checkpoints_dir: str, final_model_path: str | None = None) -> str:
     """Busca o checkpoint mais recente gerado pelo treinamento."""
     candidates = glob.glob(os.path.join(checkpoints_dir, "*.zip"))
     if final_model_path and os.path.exists(f"{final_model_path}.zip"):
@@ -102,7 +104,7 @@ def main():
     try:
         while True:
             action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs, _reward, terminated, truncated, info = env.step(action)
 
             if args.delay > 0:
                 time.sleep(args.delay)
@@ -127,10 +129,10 @@ def main():
                         new_model = PPO.load(latest_path)
                         model = new_model
                         current_model_path = latest_path
-                        print(f"\n🔄 [ATUALIZAÇÃO AO VIVO] Novo checkpoint carregado!")
+                        print("\n🔄 [ATUALIZAÇÃO AO VIVO] Novo checkpoint carregado!")
                         print(f"   Arquivo: '{latest_path}'\n")
-                    except Exception:
-                        pass
+                    except (OSError, RuntimeError, ValueError) as e:
+                        print(f"Aviso ao carregar checkpoint: {e}")
 
                 obs, info = env.reset()
                 time.sleep(0.1)

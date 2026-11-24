@@ -1,3 +1,5 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 """
 Visualizador Universal de Modelos Treinados - OxeBots RL-SSL
 Permite rodar qualquer modelo salvo (.zip ou .onnx) com renderização gráfica 2D e HUD de estatísticas.
@@ -7,12 +9,11 @@ import argparse
 import glob
 import os
 import time
+
 import gymnasium as gym
-import numpy as np
 import yaml
 from stable_baselines3 import PPO
 
-import rsoccer_gym
 from rewards import get_reward_function
 
 
@@ -131,7 +132,7 @@ def main():
             else:
                 action = env.action_space.sample()
 
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs, _reward, terminated, truncated, info = env.step(action)
 
             if args.delay > 0:
                 time.sleep(args.delay)

@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
-import pytest
-import rsoccer_gym
+
+import rsoccer_gym  # noqa: F401
 from rewards import SingleAgentReward
 
 
@@ -24,7 +24,7 @@ def test_single_env_reset():
 
 def test_single_env_step():
     env = gym.make("SSL-EL-v0")
-    obs, info = env.reset(seed=42)
+    _obs, _info = env.reset(seed=42)
     action = np.array([0.5, -0.2, 0.0, 1.0], dtype=np.float32)
     next_obs, reward, terminated, truncated, step_info = env.step(action)
 

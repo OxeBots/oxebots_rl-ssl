@@ -1,3 +1,5 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 """
 Exportador ONNX e Gerador de Metadados para ROS 2 - OxeBots RL-SSL
 Converte políticas treinadas (.zip) para ONNX e gera o arquivo de especificação model_metadata.json.
@@ -8,10 +10,11 @@ import argparse
 import json
 import os
 import time
+
 import numpy as np
 import torch
-import torch.nn as nn
 from stable_baselines3 import PPO
+from torch import nn
 
 
 class OnnxablePolicy(nn.Module):

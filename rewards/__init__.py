@@ -1,6 +1,8 @@
+# Copyright (c) 2022 RobôCIn, 2026 OxeBots
+# Distributed under the MIT License (see LICENSE)
 from rewards.base_reward import BaseReward
-from rewards.reward_single import SingleAgentReward
 from rewards.reward_multi import MultiAgentReward
+from rewards.reward_single import SingleAgentReward
 
 
 def get_reward_function(config: dict) -> BaseReward:
@@ -11,4 +13,4 @@ def get_reward_function(config: dict) -> BaseReward:
     return SingleAgentReward(config)
 
 
-__all__ = ["BaseReward", "SingleAgentReward", "MultiAgentReward", "get_reward_function"]
+__all__ = ["BaseReward", "MultiAgentReward", "SingleAgentReward", "get_reward_function"]
