@@ -162,47 +162,108 @@ penalties:
 
 ## Execução e Treinamento
 
-### 1. Iniciar o Treinamento
+### Como Rodar um Treino (Exemplo: Atacante Single-Agent)
 
-O comando abaixo lê o arquivo `config/config.yaml` e inicia o pipeline configurado:
+#### Qual arquivo eu preciso modificar?
+
+Na quase totalidade dos casos, **apenas um arquivo**: `config/config.yaml`.
+
+- **Para ajustar comportamento, recompensas e buffs**: você altera apenas os pesos e ativações nas seções `rewards:` e `penalties:` do `config/config.yaml`.
+- **Para alterar hiperparâmetros de aprendizado**: você ajusta as seções `training:` (`n_envs`, `total_timesteps`, etc.) e `ppo:` (`learning_rate`, `batch_size`, `ent_coef`, etc.) no próprio `config/config.yaml`.
+- **Modifico só o reward e buff?** Sim! Você não precisa alterar nenhum arquivo de código Python para treinar, tunar pesos ou mudar hiperparâmetros. Só é necessário editar código Python se você quiser inventar uma fórmula matemática de recompensa que ainda não exista no projeto — nesse caso específico, editaria a classe de cálculo em `rewards/reward_single.py`. Para todo o restante, o arquivo YAML é suficiente.
+
+---
+
+### Passo a Passo: Treinando um Atacante
+
+#### 1. Configurar o Treino em `config/config.yaml`
+
+Abra `config/config.yaml` e configure o seu cenário:
+
+1. **Defina o modo single-agent**:
+   ```yaml
+   mode_single: true
+   ```
+2. **Defina os atuadores do robô e o campo**:
+   ```yaml
+   environment:
+     max_steps: 600
+     enable_dribbler: false   # true se o robô tiver motor de drible | false se não tiver
+     enable_kicker: true      # true para permitir chute
+     field:
+       preset: "entry"        # "entry" (4.5m x 3.0m) ou "division_b" (9.0m x 6.0m)
+   ```
+3. **Ajuste as recompensas (buffs do atacante)**:
+   ```yaml
+   rewards:
+     goal:
+       enabled: true
+       value: 50.0            # Bônus alto por gol marcado
+     shot_on_goal:
+       enabled: true
+       value: 10.0            # Incentivo ao chute forte em direção à meta
+     move_to_ball:
+       enabled: true
+       value: 2.0             # Incentivo para buscar a bola rapidamente
+     ball_to_goal:
+       enabled: true
+       value: 5.0             # Incentivo para empurrar a bola rumo ao gol adversário
+     alignment:
+       enabled: true
+       value: 0.5             # Incentivo angular para posicionar o robô atrás da bola
+   ```
+4. **Ajuste o volume do treino e paralelismo**:
+   ```yaml
+   training:
+     n_envs: 8                # Quantidade de simulações paralelas
+     total_timesteps: 5000000 # Total de passos do treino
+   ```
+
+#### 2. Iniciar o Treinamento
+
+No terminal, execute o script principal:
 
 ```bash
 python train.py
 ```
 
-Caso queira usar um arquivo de configuração alternativo:
+O script carregará as configurações de `config/config.yaml`, inicializará os ambientes vetorizados e começará a salvar checkpoints em `logs/checkpoints_single/`.
+
+Para utilizar outro arquivo YAML sem sobrescrever o padrão:
 
 ```bash
 python train.py --config caminho/para/outro_config.yaml
 ```
 
-### 2. Monitoramento Visual em Tempo Real (Live Player)
+#### 3. Acompanhamento Visual em Tempo Real (Live Player)
 
-Em um segundo terminal, execute o monitor de checkpoints. A janela do Pygame abrirá e recarregará os pesos em tempo real sempre que um novo checkpoint for salvo pelo `train.py`:
+Em um segundo terminal, abra o visualizador interativo em tempo real:
 
 ```bash
 python play_live.py
 ```
 
-### 3. Acompanhamento no TensorBoard
+A janela gráfica exibirá o comportamento do robô e recarregará automaticamente os novos pesos a cada checkpoint gerado pelo `train.py`.
 
-Visualize curvas de recompensa média, perdas de valor e entropia da política:
+#### 4. Acompanhamento no TensorBoard
+
+Em um terceiro terminal (opcional), monitore as curvas de convergência, recompensa média e perdas do PPO:
 
 ```bash
 tensorboard --logdir logs/tensorboard
 ```
 
-Acesse o painel em: `http://localhost:6006`.
+Acesse o painel web em: `http://localhost:6006`.
 
-### 4. Visualização de Modelos Concluídos
+#### 5. Visualização do Modelo Final
 
-Para executar e inspecionar um modelo já treinado:
+Após o término do treinamento, teste o modelo gerado:
 
 ```bash
-# Executa o modelo mais recente encontrado em modelos/
+# Executa o modelo mais recente salvo em modelos/
 python play.py
 
-# Ou especifique o caminho explicitamente
+# Ou especifique o arquivo desejado
 python play.py --model modelos/ssl_el_final
 ```
 
