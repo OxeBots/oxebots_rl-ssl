@@ -1,5 +1,6 @@
 from gymnasium.envs.registration import register
 
+# Ambientes Herdados / Desafios SSL e VSSS
 register(
     id="VSS-v0", entry_point="rsoccer_gym.vss.env_vss:VSSEnv", max_episode_steps=1200
 )
@@ -29,8 +30,20 @@ register(
     max_episode_steps=1200,
 )
 
+# ==============================================================================
+# Ambientes Oficiais OxeBots SSL Entry Level (SSL-EL)
+# ==============================================================================
+
+# 1. Single-Agent: Base SSL-EL com Recompensa Plug-and-Play (Atacante / Defensor / Passe)
 register(
     id="SSL-EL-v0",
-    entry_point="rsoccer_gym.ssl.ssl_el_attacker:SSLELAttackerEnv",
+    entry_point="rsoccer_gym.ssl.ssl_el:SSLELEnv",
+    max_episode_steps=1200,
+)
+
+# 2. Multi-Agent: Cooperação de Atacantes (MAPPO / CTDE)
+register(
+    id="SSL-EL-Coop-v0",
+    entry_point="rsoccer_gym.ssl.ssl_el_multi:SSLELMultiEnv",
     max_episode_steps=1200,
 )

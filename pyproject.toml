@@ -1,21 +1,26 @@
-[tool.poetry]
-name = "rsoccer-gym"
-version = "1.0.0"
-description = "RSoccer Gym is an open-source framework to study Reinforcement Learning for RoboCup's Small Size League and IEEE VSSS competition environments."
-authors = ["FelipeMartins96 <fbm2@cin.ufpe.br>", "goncamateus <mgm4@cin.ufpe.br>"]
-license = "MIT"
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.10"
-rc-robosim = "^1.2"
-gymnasium = ">=1.0.0"
-pygame = "^2.6.1"
-
-[tool.poetry.group.dev.dependencies]
-ipython = "^8.28.0"
-ipdb = "^0.13.13"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oxebots-rl-ssl"
+version = "1.0.0"
+description = "OxeBots SSL and VSS robot soccer gym environments and RL training framework"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium>=1.0.0",
+    "rc-robosim>=1.2.0",
+    "pygame>=2.6.0",
+    "protobuf>=3.20.0",
+    "pyyaml>=6.0.0",
+    "numpy>=1.21.0",
+    "tqdm>=4.66.0",
+    "rich>=13.0.0",
+    "stable-baselines3>=2.3.0",
+    "torch>=2.0.0",
+    "tensorboard>=2.15.0",
+    "onnx>=1.15.0",
+    "onnxscript>=0.1.0",
+    "onnxruntime>=1.16.0",
+]

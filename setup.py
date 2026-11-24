@@ -1,19 +1,15 @@
-"""
-#       Install Project Requirements 
-"""
 from setuptools import setup, find_packages
 
 setup(
-    name="rsoccer-gym",
-    url="https://github.com/robocin/rSoccer",
-    description="SSL and VSS robot soccer gym environments",
-    packages=[
-        package for package in find_packages() if package.startswith("rsoccer_gym")
-    ],
+    name="oxebots-rl-ssl",
+    version="1.0.0",
+    description="OxeBots SSL and VSS robot soccer gym environments and RL training framework",
+    packages=find_packages(),
     install_requires=[
-        "gymnasium >= 1.0.0",
-        "rc-robosim >= 1.2.0",
-        "pygame >=2.1.0",
-        "protobuf == 3.20.2",
+        "gymnasium>=1.0.0",
+        "rc-robosim>=1.2.0",
+        "pygame>=2.6.0",
+        "protobuf>=3.20.0",
+        "pyyaml>=6.0.0",
     ],
 )

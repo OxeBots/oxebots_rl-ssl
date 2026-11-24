@@ -1,20 +1,23 @@
 # ==============================================================================
-# Dependências do rSoccer Gym e Treinamento com Aprendizado por Reforço (RL)
-# Recomendado: Python 3.10
+# Dependências do OxeBots RL-SSL (Python 3.10 recomendado)
 # ==============================================================================
 
 # Simulador Físico C++ e Ambientes Gymnasium
 rc-robosim>=1.2.0
 gymnasium>=1.0.0
 pygame>=2.6.0
+protobuf>=3.20.0
 
 # Framework de Reinforcement Learning e Deep Learning
 stable-baselines3>=2.3.0
 torch>=2.0.0
 tensorboard>=2.15.0
 
-# Utilitários
+# Configurações e Utilitários
+pyyaml>=6.0.0
 numpy>=1.21.0
+tqdm>=4.66.0
+rich>=13.0.0
 
 # Exportação e Inferência de Modelos (ROS / Deploy)
 onnx>=1.15.0

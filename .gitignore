@@ -158,3 +158,12 @@ cython_debug/
 
 # Poetry
 poetry.lock
+
+# OxeBots RL
+venv/
+logs/
+checkpoints/
+tensorboard*/
+modelos/checkpoints*/
+*.onnx.data
+*.egg-info/
